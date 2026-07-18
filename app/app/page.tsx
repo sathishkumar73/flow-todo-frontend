@@ -8,6 +8,8 @@ import { createApi } from "@/lib/api";
 import TaskRow from "../components/TaskRow";
 import BriefingCard from "../components/BriefingCard";
 import TriagePanel from "../components/TriagePanel";
+import InsightsBanner from "../components/InsightsBanner";
+import RetroPanel from "../components/RetroPanel";
 
 const FOCUS_LIMIT = 10;
 
@@ -162,6 +164,12 @@ export default function Home() {
         fetchBriefing={() => api.get<{ date: string; content: string }>("/api/v1/briefing")}
       />
 
+      <InsightsBanner
+        fetchInsights={() =>
+          api.get<{ burnout_signal: boolean; message: string | null }>("/api/v1/insights")
+        }
+      />
+
       <TriagePanel
         staleTasks={staleTasks}
         onTriage={async (id, action) => {
@@ -222,6 +230,12 @@ export default function Home() {
           )}
         </div>
       )}
+
+      <RetroPanel
+        fetchRetro={() =>
+          api.get<{ week_start: string; content: string }>("/api/v1/insights/retrospective")
+        }
+      />
     </main>
   );
 }

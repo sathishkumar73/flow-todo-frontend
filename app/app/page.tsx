@@ -7,6 +7,7 @@ import { EisenhowerQuadrant, ImpactEffortQuadrant } from "@/lib/scoring";
 import { createApi } from "@/lib/api";
 import TaskRow from "../components/TaskRow";
 import BriefingCard from "../components/BriefingCard";
+import TriagePanel from "../components/TriagePanel";
 
 const FOCUS_LIMIT = 10;
 
@@ -35,9 +36,15 @@ export default function Home() {
   const [backlogOpen, setBacklogOpen] = useState(false);
   const [doneToday, setDoneToday] = useState(0);
   const [sharpening, setSharpening] = useState(false);
+  const [staleTasks, setStaleTasks] = useState<Task[]>([]);
 
   useEffect(() => {
     fetchTasks();
+    api
+      .get<{ tasks: Task[] }>("/api/v1/tasks/triage")
+      .then((data) => setStaleTasks(data.tasks ?? []))
+      .catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function fetchTasks() {
@@ -153,6 +160,20 @@ export default function Home() {
 
       <BriefingCard
         fetchBriefing={() => api.get<{ date: string; content: string }>("/api/v1/briefing")}
+      />
+
+      <TriagePanel
+        staleTasks={staleTasks}
+        onTriage={async (id, action) => {
+          await api.post(`/api/v1/tasks/${id}/triage`, { action });
+          if (action !== "do_this_week") {
+            setTasks((prev) => prev.filter((t) => t.id !== id));
+          }
+        }}
+        onDone={() => {
+          setStaleTasks([]);
+          fetchTasks();
+        }}
       />
 
       {doneToday > 0 && (

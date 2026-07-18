@@ -13,30 +13,30 @@ const T = {
 };
 
 const FREE_FEATURES = [
-  "Unlimited tasks",
-  "Eisenhower Matrix scoring",
-  "Impact/Effort Matrix scoring",
-  "Auto priority score (0–100)",
-  "Top-10 focus view",
+  "AI auto-categorization on every task",
+  "Eisenhower + Impact/Effort scoring",
+  "Deadline-aware priority (auto-boosts as due dates near)",
+  "AI duration estimates",
+  "Top-10 focus view + backlog",
   "Stack & Priority sort modes",
-  "Backlog",
   "PWA — add to home screen",
 ];
 
 const PRO_FEATURES = [
   "Everything in Free",
-  "Multiple task boards",
-  "Task labels & filters",
-  "Recurring tasks",
-  "Export to CSV",
+  "AI Daily Briefing — your day at a glance",
+  "Weekly Triage — clear stale tasks in 3 minutes",
+  "Sharpen — AI rewrites vague tasks into actions",
+  "Weekly Retrospective — see your patterns",
+  "Pace insights — a heads-up when you're overloaded",
   "Priority email support",
 ];
 
 export default function PricingSection() {
   const [annual, setAnnual] = useState(false);
 
-  const proMonthly = 6;
-  const proAnnual = 4;
+  const proMonthly = 12;
+  const proAnnual = 8;
 
   return (
     <div style={{ width: "100%", maxWidth: 780, margin: "0 auto" }}>
@@ -86,7 +86,7 @@ export default function PricingSection() {
               borderRadius: 999,
             }}
           >
-            2 months free
+            Save 33%
           </span>
         </span>
       </div>

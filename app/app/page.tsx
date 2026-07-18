@@ -6,6 +6,7 @@ import type { Task } from "@/lib/types";
 import { EisenhowerQuadrant, ImpactEffortQuadrant } from "@/lib/scoring";
 import { createApi } from "@/lib/api";
 import TaskRow from "../components/TaskRow";
+import BriefingCard from "../components/BriefingCard";
 
 const FOCUS_LIMIT = 10;
 
@@ -16,7 +17,9 @@ function sortTasks(tasks: Task[], mode: SortMode): Task[] {
     return [...tasks].sort((a, b) => b.stack_position - a.stack_position);
   }
   return [...tasks].sort((a, b) => {
-    if (b.priority_score !== a.priority_score) return b.priority_score - a.priority_score;
+    const pa = a.effective_priority ?? a.priority_score;
+    const pb = b.effective_priority ?? b.priority_score;
+    if (pb !== pa) return pb - pa;
     return b.stack_position - a.stack_position;
   });
 }
@@ -147,6 +150,10 @@ export default function Home() {
           </button>
         )}
       </form>
+
+      <BriefingCard
+        fetchBriefing={() => api.get<{ date: string; content: string }>("/api/v1/briefing")}
+      />
 
       {doneToday > 0 && (
         <p className="mb-4 text-sm text-neutral-500">

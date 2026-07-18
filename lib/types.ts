@@ -15,4 +15,5 @@ export interface Task {
   ai_rationale: string | null;
   ai_scored: boolean;
   last_touched_at: string;
+  effective_priority?: number;
 }

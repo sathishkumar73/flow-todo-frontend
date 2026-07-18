@@ -1,7 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useAuth } from "@clerk/nextjs";
+import {
+  DndContext,
+  DragEndEvent,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  closestCenter,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
 import type { Task } from "@/lib/types";
 import { EisenhowerQuadrant, ImpactEffortQuadrant } from "@/lib/scoring";
 import { createApi } from "@/lib/api";
@@ -39,6 +53,11 @@ export default function Home() {
   const [doneToday, setDoneToday] = useState(0);
   const [sharpening, setSharpening] = useState(false);
   const [staleTasks, setStaleTasks] = useState<Task[]>([]);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  );
 
   useEffect(() => {
     fetchTasks();
@@ -85,7 +104,7 @@ export default function Home() {
       });
       if (data.suggestion) setTitle(data.suggestion);
     } catch {
-      // sharpen is best-effort; keep the user's original text
+      // best-effort; keep original text
     } finally {
       setSharpening(false);
     }
@@ -110,66 +129,108 @@ export default function Home() {
     }
   }
 
+  const handleDragEnd = useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+
+      setTasks((prev) => {
+        const activeIndex = prev.findIndex((t) => t.id === active.id);
+        const overIndex = prev.findIndex((t) => t.id === over.id);
+        if (activeIndex === -1 || overIndex === -1) return prev;
+        const reordered = arrayMove(prev, activeIndex, overIndex);
+        // Persist new order in background — fire and forget
+        const orderedIds = reordered.map((t) => t.id);
+        api.post("/api/v1/tasks/reorder", { ordered_ids: orderedIds }).catch(() => {});
+        return reordered;
+      });
+    },
+    [api]
+  );
+
+  const isDragMode = mode === "stack";
+
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col px-5 py-8 sm:py-12">
-      <header className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Flow Todo</h1>
-        <div className="flex items-center gap-2 text-sm">
-          <span className={mode === "stack" ? "font-medium text-neutral-900" : "text-neutral-400"}>
-            Stack
-          </span>
+    <main className="mx-auto flex min-h-screen max-w-[680px] flex-col px-4 py-6 sm:px-6 sm:py-10">
+      {/* Header */}
+      <header className="mb-6 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-accent">
+            <path
+              d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"
+              stroke="currentColor"
+              strokeWidth="1.75"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+          <h1 className="text-lg font-semibold tracking-tight text-ink">Flow Todo</h1>
+        </div>
+
+        {/* Sort toggle pill */}
+        <div className="flex items-center rounded-full border border-white/10 bg-surface p-0.5">
           <button
             type="button"
-            role="switch"
-            aria-checked={mode === "priority"}
-            onClick={() => setMode((m) => (m === "stack" ? "priority" : "stack"))}
-            className="relative h-6 w-11 shrink-0 rounded-full bg-neutral-200 transition"
+            onClick={() => setMode("stack")}
+            className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-all ${
+              mode === "stack"
+                ? "bg-accent text-white shadow-sm"
+                : "text-white/40 hover:text-white/60"
+            }`}
           >
-            <span
-              className={`absolute top-0.5 h-5 w-5 rounded-full bg-accent shadow transition ${
-                mode === "priority" ? "left-[22px]" : "left-0.5"
-              }`}
-            />
+            Stack
           </button>
-          <span className={mode === "priority" ? "font-medium text-neutral-900" : "text-neutral-400"}>
+          <button
+            type="button"
+            onClick={() => setMode("priority")}
+            className={`rounded-full px-3.5 py-1.5 text-xs font-medium transition-all ${
+              mode === "priority"
+                ? "bg-accent text-white shadow-sm"
+                : "text-white/40 hover:text-white/60"
+            }`}
+          >
             Priority
-          </span>
+          </button>
         </div>
       </header>
 
-      <form onSubmit={addTask} className="mb-6 relative">
+      {/* Add task input */}
+      <form onSubmit={addTask} className="mb-5 relative">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          placeholder="Add a task and hit Enter…"
-          className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 pr-12 text-base outline-none focus:border-accent"
+          placeholder="What needs to happen?"
+          className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3.5 pr-14 text-[15px] text-ink placeholder-white/25 outline-none transition focus:border-accent/50 focus:ring-1 focus:ring-accent/20"
         />
-        {title.trim() && (
-          <button
-            type="button"
-            aria-label="Sharpen task with AI"
-            title="Sharpen: rewrite as a concrete, actionable task"
-            onClick={sharpenTitle}
-            disabled={sharpening}
-            className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-sm transition hover:bg-neutral-100 ${
-              sharpening ? "animate-pulse text-accent" : "text-neutral-400 hover:text-accent"
-            }`}
-          >
-            ✦
-          </button>
-        )}
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          {title.trim() && (
+            <button
+              type="button"
+              aria-label="AI Sharpen"
+              title="Rewrite as a concrete, actionable task"
+              onClick={sharpenTitle}
+              disabled={sharpening}
+              className={`rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition ${
+                sharpening
+                  ? "animate-pulse text-accent"
+                  : "text-white/30 hover:bg-accent/10 hover:text-accent"
+              }`}
+            >
+              ✦
+            </button>
+          )}
+        </div>
       </form>
 
+      {/* AI banners */}
       <BriefingCard
         fetchBriefing={() => api.get<{ date: string; content: string }>("/api/v1/briefing")}
       />
-
       <InsightsBanner
         fetchInsights={() =>
           api.get<{ burnout_signal: boolean; message: string | null }>("/api/v1/insights")
         }
       />
-
       <TriagePanel
         staleTasks={staleTasks}
         onTriage={async (id, action) => {
@@ -184,44 +245,92 @@ export default function Home() {
         }}
       />
 
+      {/* Done counter */}
       {doneToday > 0 && (
-        <p className="mb-4 text-sm text-neutral-500">
-          Done today: <span className="font-medium text-neutral-700">{doneToday}</span>
+        <p className="mb-4 text-xs text-white/30">
+          Completed today:{" "}
+          <span className="font-semibold text-green-400">{doneToday}</span>
         </p>
       )}
 
+      {/* Focus task list */}
       {loading ? (
-        <p className="text-sm text-neutral-400">Loading…</p>
-      ) : focusTasks.length === 0 ? (
-        <p className="text-sm text-neutral-400">Nothing here. Add your first task above.</p>
-      ) : (
-        <ul className="rounded-xl border border-neutral-100 bg-white px-4">
-          {focusTasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              onComplete={completeTask}
-              onUpdateMatrix={updateMatrix}
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              className="h-16 rounded-2xl border border-white/5 bg-surface animate-pulse"
             />
           ))}
-        </ul>
+        </div>
+      ) : focusTasks.length === 0 ? (
+        <div className="mt-8 text-center">
+          <p className="text-[15px] text-white/25">Nothing here.</p>
+          <p className="mt-1 text-sm text-white/15">Add your first task above.</p>
+        </div>
+      ) : (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={focusTasks.map((t) => t.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <ul className="space-y-2">
+              {focusTasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  isDragMode={isDragMode}
+                  onComplete={completeTask}
+                  onUpdateMatrix={updateMatrix}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
       )}
 
+      {/* Backlog */}
       {backlogTasks.length > 0 && (
-        <div className="mt-6">
+        <div className="mt-5">
           <button
             type="button"
             onClick={() => setBacklogOpen((v) => !v)}
-            className="text-xs text-neutral-400 hover:text-neutral-600"
+            className="flex w-full items-center justify-between rounded-2xl border border-white/7 bg-surface px-4 py-3 text-sm text-white/30 transition hover:border-white/12 hover:text-white/50"
           >
-            {backlogOpen ? "Hide" : "Backlog"} ({backlogTasks.length})
+            <span>Backlog</span>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs">
+                {backlogTasks.length}
+              </span>
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 14 14"
+                fill="none"
+                className={`transition-transform duration-200 ${backlogOpen ? "rotate-180" : ""}`}
+              >
+                <path
+                  d="M3 5l4 4 4-4"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </div>
           </button>
+
           {backlogOpen && (
-            <ul className="mt-2 rounded-xl border border-neutral-100 bg-white px-4 opacity-70">
+            <ul className="mt-2 space-y-2 animate-slide-down opacity-70">
               {backlogTasks.map((task) => (
                 <TaskRow
                   key={task.id}
                   task={task}
+                  isDragMode={false}
                   onComplete={completeTask}
                   onUpdateMatrix={updateMatrix}
                 />

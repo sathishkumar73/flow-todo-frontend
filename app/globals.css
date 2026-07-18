@@ -8,6 +8,10 @@ body {
 }
 
 body {
-  background-color: #fafafa;
-  color: #171717;
+  background-color: #07070f;
+  color: #e8e8f0;
+}
+
+[data-dnd-dragging] {
+  cursor: grabbing !important;
 }

@@ -30,13 +30,13 @@ export default function BriefingCard({ fetchBriefing }: BriefingCardProps) {
   if (dismissed || !briefing) return null;
 
   return (
-    <div className="mb-6 rounded-xl border border-accent/20 bg-accent/5 px-4 py-3">
+    <div className="mb-4 animate-fade-in rounded-2xl border border-accent/20 bg-accent/8 px-4 py-3">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="mb-1 text-[11px] font-medium uppercase tracking-wide text-accent">
-            Today's briefing
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-accent">
+            Today&apos;s briefing
           </p>
-          <p className="text-sm leading-relaxed text-neutral-700">{briefing.content}</p>
+          <p className="text-sm leading-relaxed text-ink-2">{briefing.content}</p>
         </div>
         <button
           type="button"
@@ -45,7 +45,7 @@ export default function BriefingCard({ fetchBriefing }: BriefingCardProps) {
             localStorage.setItem(DISMISS_KEY, briefing.date);
             setDismissed(true);
           }}
-          className="shrink-0 rounded-full p-1 text-neutral-400 transition hover:bg-neutral-100 hover:text-neutral-600"
+          className="shrink-0 rounded-full p-1 text-white/20 transition hover:bg-white/8 hover:text-white/50"
         >
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
             <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />

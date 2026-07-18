@@ -1,12 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { Task } from "@/lib/types";
 import { EisenhowerQuadrant, ImpactEffortQuadrant } from "@/lib/scoring";
 import MatrixPanel from "./MatrixPanel";
 
 interface TaskRowProps {
   task: Task;
+  isDragMode: boolean;
   onComplete: (id: number) => void;
   onUpdateMatrix: (
     id: number,
@@ -17,11 +20,18 @@ interface TaskRowProps {
   ) => void;
 }
 
-const DOT_COLOR: Record<string, string> = {
-  do_first: "bg-red-500",
-  schedule: "bg-amber-500",
-  delegate: "bg-sky-500",
-  eliminate: "bg-neutral-400",
+const EISENHOWER_BADGE: Record<EisenhowerQuadrant, { label: string; cls: string }> = {
+  do_first:  { label: "Q1 · Do First",  cls: "bg-red-950/60 text-red-400 border border-red-800/50" },
+  schedule:  { label: "Q2 · Schedule",  cls: "bg-blue-950/60 text-blue-400 border border-blue-800/50" },
+  delegate:  { label: "Q3 · Delegate",  cls: "bg-amber-950/60 text-amber-400 border border-amber-800/50" },
+  eliminate: { label: "Q4 · Eliminate", cls: "bg-white/5 text-white/30 border border-white/10" },
+};
+
+const IE_BADGE: Record<ImpactEffortQuadrant, { label: string; cls: string }> = {
+  quick_win:     { label: "Quick Win",      cls: "bg-green-950/60 text-green-400 border border-green-800/50" },
+  major_project: { label: "Major Project",  cls: "bg-purple-950/60 text-purple-400 border border-purple-800/50" },
+  fill_in:       { label: "Fill-in",        cls: "bg-white/5 text-white/30 border border-white/10" },
+  thankless:     { label: "Thankless",      cls: "bg-red-950/30 text-red-500/60 border border-red-900/30" },
 };
 
 function formatDue(dateString: string): { label: string; urgent: boolean } {
@@ -31,10 +41,7 @@ function formatDue(dateString: string): { label: string; urgent: boolean } {
   if (days === 0) return { label: "Today", urgent: true };
   if (days === 1) return { label: "Tomorrow", urgent: true };
   if (days <= 7) return { label: `${days}d`, urgent: false };
-  return {
-    label: due.toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    urgent: false,
-  };
+  return { label: due.toLocaleDateString("en-US", { month: "short", day: "numeric" }), urgent: false };
 }
 
 function formatDuration(minutes: number): string {
@@ -44,74 +51,147 @@ function formatDuration(minutes: number): string {
   return m ? `${h}h ${m}m` : `${h}h`;
 }
 
-export default function TaskRow({ task, onComplete, onUpdateMatrix }: TaskRowProps) {
+export default function TaskRow({ task, isDragMode, onComplete, onUpdateMatrix }: TaskRowProps) {
   const [panelOpen, setPanelOpen] = useState(false);
-  const hasTag = task.eisenhower_quadrant || task.impact_effort_quadrant;
-  const dotColor = task.eisenhower_quadrant
-    ? DOT_COLOR[task.eisenhower_quadrant]
-    : hasTag
-    ? "bg-accent"
-    : null;
+  const [completing, setCompleting] = useState(false);
+
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: task.id,
+    disabled: !isDragMode,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  async function handleComplete() {
+    setCompleting(true);
+    onComplete(task.id);
+  }
+
+  const eisBadge = task.eisenhower_quadrant ? EISENHOWER_BADGE[task.eisenhower_quadrant] : null;
+  const ieBadge = task.impact_effort_quadrant ? IE_BADGE[task.impact_effort_quadrant] : null;
+  const due = task.due_date ? formatDue(task.due_date) : null;
 
   return (
-    <li className="border-b border-neutral-100 last:border-b-0">
-      <div className="flex items-center gap-3 py-3">
+    <li
+      ref={setNodeRef}
+      style={style}
+      className={`group rounded-2xl border bg-surface transition-all duration-150 ${
+        isDragging
+          ? "border-accent/40 shadow-lg shadow-accent/10"
+          : "border-white/7 hover:border-white/12"
+      } ${completing ? "opacity-0 scale-95" : ""}`}
+    >
+      <div className="flex items-start gap-3 p-4">
+        {/* Drag handle — only in stack mode */}
+        {isDragMode ? (
+          <button
+            type="button"
+            className="mt-0.5 shrink-0 cursor-grab touch-none rounded-lg p-1 text-white/20 transition hover:text-white/40 active:cursor-grabbing"
+            aria-label="Drag to reorder"
+            {...attributes}
+            {...listeners}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor">
+              <circle cx="4" cy="3" r="1.2" />
+              <circle cx="10" cy="3" r="1.2" />
+              <circle cx="4" cy="7" r="1.2" />
+              <circle cx="10" cy="7" r="1.2" />
+              <circle cx="4" cy="11" r="1.2" />
+              <circle cx="10" cy="11" r="1.2" />
+            </svg>
+          </button>
+        ) : (
+          <div className="w-6 shrink-0" />
+        )}
+
+        {/* Checkbox */}
         <button
           type="button"
           aria-label="Complete task"
-          onClick={() => onComplete(task.id)}
-          className="h-6 w-6 shrink-0 rounded-full border-2 border-neutral-300 hover:border-accent transition"
+          onClick={handleComplete}
+          className="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 border-white/20 transition hover:border-accent hover:bg-accent/10"
         />
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            {dotColor && <span className={`h-2 w-2 rounded-full shrink-0 ${dotColor}`} />}
-            <span className="truncate text-base text-neutral-900">{task.title}</span>
-            {task.due_date && (() => {
-              const due = formatDue(task.due_date);
-              return (
+
+        {/* Content */}
+        <div className="min-w-0 flex-1">
+          <p className="text-[15px] leading-snug text-ink">{task.title}</p>
+
+          {/* Badge row */}
+          {(eisBadge || ieBadge || due || task.duration_minutes != null) && (
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {eisBadge && (
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${eisBadge.cls}`}>
+                  {eisBadge.label}
+                </span>
+              )}
+              {ieBadge && (
+                <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${ieBadge.cls}`}>
+                  {ieBadge.label}
+                </span>
+              )}
+              {due && (
                 <span
-                  className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                    due.urgent ? "bg-red-50 text-red-600" : "bg-neutral-100 text-neutral-500"
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                    due.urgent
+                      ? "bg-red-950/60 text-red-400 border border-red-800/50"
+                      : "bg-white/5 text-white/40 border border-white/10"
                   }`}
                 >
                   {due.label}
                 </span>
-              );
-            })()}
-            {task.duration_minutes != null && (
-              <span className="shrink-0 rounded-full bg-neutral-100 px-2 py-0.5 text-[11px] text-neutral-500">
-                {formatDuration(task.duration_minutes)}
-              </span>
-            )}
-          </div>
+              )}
+              {task.duration_minutes != null && (
+                <span className="inline-flex items-center rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/40">
+                  {formatDuration(task.duration_minutes)}
+                </span>
+              )}
+              {!eisBadge && !ieBadge && task.ai_scored === false && (
+                <span className="text-[11px] text-white/20">AI scoring…</span>
+              )}
+            </div>
+          )}
+
+          {/* AI rationale when panel open */}
           {panelOpen && task.ai_rationale && (
-            <p className="mt-1 truncate text-xs text-neutral-400">{task.ai_rationale}</p>
+            <p className="mt-2 text-xs leading-relaxed text-white/30">{task.ai_rationale}</p>
           )}
         </div>
+
+        {/* Expand button */}
         <button
           type="button"
-          aria-label="Prioritize task"
+          aria-label={panelOpen ? "Close matrix" : "View/edit priority matrix"}
           onClick={() => setPanelOpen((v) => !v)}
-          className={`shrink-0 rounded-full p-2 transition hover:bg-neutral-100 ${
-            panelOpen ? "text-accent" : "text-neutral-400"
+          className={`mt-0.5 shrink-0 rounded-lg p-1.5 transition ${
+            panelOpen ? "text-accent bg-accent/10" : "text-white/20 hover:text-white/50 hover:bg-white/5"
           }`}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M4 6h16M4 12h10M4 18h6"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-            />
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            className={`transition-transform duration-200 ${panelOpen ? "rotate-180" : ""}`}
+          >
+            <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
         </button>
       </div>
+
+      {/* Expanded matrix panel */}
       {panelOpen && (
-        <MatrixPanel
-          task={task}
-          onChange={(updates) => onUpdateMatrix(task.id, updates)}
-          onClose={() => setPanelOpen(false)}
-        />
+        <div className="animate-slide-down border-t border-white/7 px-4 pb-4 pt-3">
+          <MatrixPanel
+            task={task}
+            onChange={(updates) => onUpdateMatrix(task.id, updates)}
+            onClose={() => setPanelOpen(false)}
+          />
+        </div>
       )}
     </li>
   );

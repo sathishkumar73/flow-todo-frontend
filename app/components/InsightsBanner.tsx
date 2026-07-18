@@ -32,8 +32,8 @@ export default function InsightsBanner({ fetchInsights }: InsightsBannerProps) {
   if (dismissed || !message) return null;
 
   return (
-    <div className="mb-6 flex items-start justify-between gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3">
-      <p className="text-sm leading-relaxed text-violet-800">{message}</p>
+    <div className="mb-4 animate-fade-in flex items-start justify-between gap-3 rounded-2xl border border-purple-800/40 bg-purple-950/30 px-4 py-3">
+      <p className="text-sm leading-relaxed text-purple-300/80">{message}</p>
       <button
         type="button"
         aria-label="Dismiss"
@@ -41,7 +41,7 @@ export default function InsightsBanner({ fetchInsights }: InsightsBannerProps) {
           localStorage.setItem(DISMISS_KEY, new Date().toISOString().slice(0, 10));
           setDismissed(true);
         }}
-        className="shrink-0 rounded-full p-1 text-violet-400 transition hover:bg-violet-100 hover:text-violet-600"
+        className="shrink-0 rounded-full p-1 text-purple-400/40 transition hover:bg-purple-900/30 hover:text-purple-300"
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
           <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />

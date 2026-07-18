@@ -1,0 +1,34 @@
+@reference "tailwindcss";
+
+.blog-content {
+  @apply leading-relaxed;
+  color: rgba(232,232,240,0.85);
+}
+.blog-content h1 { @apply text-4xl font-bold mb-8 mt-12 first:mt-0; color: #E8E8F0; }
+.blog-content h2 { @apply text-3xl font-bold mb-6 mt-12 first:mt-0; color: #E8E8F0; }
+.blog-content h3 { @apply text-2xl font-semibold mb-4 mt-8; color: #E8E8F0; }
+.blog-content h4 { @apply text-xl font-semibold mb-4 mt-6; color: #E8E8F0; }
+.blog-content p  { @apply leading-relaxed mb-6; color: rgba(232,232,240,0.75); }
+.blog-content ul { @apply my-6 space-y-2 list-disc list-inside; }
+.blog-content ol { @apply my-6 space-y-2 list-decimal list-inside; }
+.blog-content li { @apply leading-relaxed; color: rgba(232,232,240,0.75); }
+.blog-content blockquote {
+  @apply border-l-4 pl-6 italic my-8 py-4 pr-4 rounded-r-lg;
+  border-color: #2563EB;
+  background: rgba(37,99,235,0.08);
+  color: rgba(232,232,240,0.62);
+}
+.blog-content strong { color: #E8E8F0; @apply font-semibold; }
+.blog-content a { @apply font-medium no-underline transition-colors; color: #60A5FA; }
+.blog-content a:hover { color: #93C5FD; }
+.blog-content img { @apply w-full rounded-xl shadow-lg my-8; }
+.blog-content table { @apply w-full border-collapse my-8; }
+.blog-content th { @apply p-3 text-left font-semibold; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07); color: #E8E8F0; }
+.blog-content td { @apply p-3; border: 1px solid rgba(255,255,255,0.07); color: rgba(232,232,240,0.75); }
+.blog-content code { @apply px-2 py-1 rounded text-sm font-mono; background: rgba(255,255,255,0.07); color: #93C5FD; }
+.blog-content pre { @apply p-4 rounded-xl overflow-x-auto my-8; background: #0C0C1D; border: 1px solid rgba(255,255,255,0.07); }
+.blog-content pre code { @apply bg-transparent p-0; color: rgba(232,232,240,0.85); }
+.blog-content hr { @apply my-10; border-color: rgba(255,255,255,0.07); }
+
+.blog-mid-cta { @apply shadow-lg; }
+.blog-mid-cta:hover { border-color: rgba(37,99,235,0.5) !important; }

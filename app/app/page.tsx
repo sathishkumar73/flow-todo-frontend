@@ -5,7 +5,7 @@ import { useAuth } from "@clerk/nextjs";
 import type { Task } from "@/lib/types";
 import { EisenhowerQuadrant, ImpactEffortQuadrant } from "@/lib/scoring";
 import { createApi } from "@/lib/api";
-import TaskRow from "./components/TaskRow";
+import TaskRow from "../components/TaskRow";
 
 const FOCUS_LIMIT = 10;
 

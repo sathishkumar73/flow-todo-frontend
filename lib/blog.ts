@@ -47,7 +47,7 @@ export async function getBlogPosts({
     if (search) params.set("search", search);
 
     const res = await fetch(`${API_URL}/api/v1/blog/posts?${params}`, {
-      next: { revalidate: 86400 },
+      next: { revalidate: 300, tags: ["blog-posts"] },
     });
     if (!res.ok) return { posts: [], totalPages: 0, totalPosts: 0 };
     const data = await res.json();
@@ -64,7 +64,7 @@ export async function getBlogPosts({
 export async function getBlogPost(slug: string): Promise<BlogPost | null> {
   try {
     const res = await fetch(`${API_URL}/api/v1/blog/posts/${slug}`, {
-      next: { revalidate: 86400 },
+      next: { revalidate: 300, tags: ["blog-posts", `blog-post-${slug}`] },
     });
     if (!res.ok) return null;
     return res.json();
@@ -76,7 +76,7 @@ export async function getBlogPost(slug: string): Promise<BlogPost | null> {
 export async function getCategories(): Promise<{ name: string; slug: string }[]> {
   try {
     const res = await fetch(`${API_URL}/api/v1/blog/categories`, {
-      next: { revalidate: 86400 },
+      next: { revalidate: 300, tags: ["blog-categories"] },
     });
     if (!res.ok) return [];
     const data = await res.json();
@@ -89,7 +89,7 @@ export async function getCategories(): Promise<{ name: string; slug: string }[]>
 export async function getRelatedPosts(slug: string, limit = 3): Promise<BlogPost[]> {
   try {
     const res = await fetch(`${API_URL}/api/v1/blog/posts/${slug}/related?limit=${limit}`, {
-      next: { revalidate: 86400 },
+      next: { revalidate: 300, tags: ["blog-posts"] },
     });
     if (!res.ok) return [];
     return res.json();

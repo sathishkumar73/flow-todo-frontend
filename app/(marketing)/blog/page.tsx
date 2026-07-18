@@ -5,7 +5,7 @@ import { getBlogPosts, getCategories } from '@/lib/blog'
 import BlogGrid from '@/components/blog/BlogGrid'
 import Pagination from '@/components/blog/Pagination'
 
-export const revalidate = 86400
+export const revalidate = 300
 
 const BASE = 'https://flowtodo.app'
 

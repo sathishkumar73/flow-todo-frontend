@@ -8,7 +8,7 @@ import BlogGrid from '@/components/blog/BlogGrid'
 
 const BlogContent = dynamic(() => import('@/components/blog/BlogContent'))
 
-export const revalidate = 86400
+export const revalidate = 300
 
 const BASE = 'https://flowtodo.app'
 

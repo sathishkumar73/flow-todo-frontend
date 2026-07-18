@@ -23,7 +23,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ClerkProvider afterSignInUrl="/app" afterSignUpUrl="/app">
+    <ClerkProvider signInFallbackRedirectUrl="/app" signUpFallbackRedirectUrl="/app">
       <html lang="en">
         <body className="min-h-screen antialiased">{children}</body>
       </html>

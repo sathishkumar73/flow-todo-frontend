@@ -31,6 +31,7 @@ export default function Home() {
   const [title, setTitle] = useState("");
   const [backlogOpen, setBacklogOpen] = useState(false);
   const [doneToday, setDoneToday] = useState(0);
+  const [sharpening, setSharpening] = useState(false);
 
   useEffect(() => {
     fetchTasks();
@@ -59,6 +60,22 @@ export default function Home() {
     const data = await api.post<{ task: Task }>("/api/v1/tasks", { title: trimmed });
     if (data.task) {
       setTasks((prev) => [data.task, ...prev]);
+    }
+  }
+
+  async function sharpenTitle() {
+    const trimmed = title.trim();
+    if (!trimmed || sharpening) return;
+    setSharpening(true);
+    try {
+      const data = await api.post<{ suggestion: string }>("/api/v1/tasks/sharpen", {
+        title: trimmed,
+      });
+      if (data.suggestion) setTitle(data.suggestion);
+    } catch {
+      // sharpen is best-effort; keep the user's original text
+    } finally {
+      setSharpening(false);
     }
   }
 
@@ -108,13 +125,27 @@ export default function Home() {
         </div>
       </header>
 
-      <form onSubmit={addTask} className="mb-6">
+      <form onSubmit={addTask} className="mb-6 relative">
         <input
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="Add a task and hit Enter…"
-          className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 text-base outline-none focus:border-accent"
+          className="w-full rounded-xl border border-neutral-200 bg-white px-4 py-3 pr-12 text-base outline-none focus:border-accent"
         />
+        {title.trim() && (
+          <button
+            type="button"
+            aria-label="Sharpen task with AI"
+            title="Sharpen: rewrite as a concrete, actionable task"
+            onClick={sharpenTitle}
+            disabled={sharpening}
+            className={`absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-2 text-sm transition hover:bg-neutral-100 ${
+              sharpening ? "animate-pulse text-accent" : "text-neutral-400 hover:text-accent"
+            }`}
+          >
+            ✦
+          </button>
+        )}
       </form>
 
       {doneToday > 0 && (

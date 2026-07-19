@@ -8,8 +8,10 @@ body {
 }
 
 body {
-  background-color: #07070f;
-  color: #e8e8f0;
+  background-color: #0f0f14;
+  color: #eeeef2;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 [data-dnd-dragging] {

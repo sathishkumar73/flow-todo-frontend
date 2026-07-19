@@ -49,7 +49,7 @@ function timeAgo(iso: string): string {
 
 function StatCard({ value, label, accent }: { value: number; label: string; accent?: string }) {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-white/7 bg-surface px-2 py-3">
+    <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-white/[0.09] bg-surface px-2 py-3">
       <span className={`text-2xl font-bold tabular-nums leading-none ${accent ?? "text-ink"}`}>{value}</span>
       <span className="mt-1 text-[10px] font-medium uppercase tracking-widest text-white/30">{label}</span>
     </div>
@@ -98,7 +98,7 @@ function EmptyState({ onAdd, onDump }: { onAdd: (t: string) => void; onDump: () 
       </p>
       <div className="mx-auto mt-5 grid max-w-[300px] grid-cols-2 gap-2 text-left">
         {FEATURES.map((f) => (
-          <div key={f.label} className="rounded-xl border border-white/7 bg-surface p-3">
+          <div key={f.label} className="rounded-xl border border-white/[0.09] bg-surface p-3">
             <div className="mb-1 text-sm">{f.icon}</div>
             <div className="text-[12px] font-semibold text-white/60">{f.label}</div>
             <div className="text-[10px] leading-tight text-white/25">{f.desc}</div>
@@ -119,7 +119,7 @@ function EmptyState({ onAdd, onDump }: { onAdd: (t: string) => void; onDump: () 
             key={ex}
             type="button"
             onClick={() => onAdd(ex)}
-            className="block w-full rounded-xl border border-white/7 bg-surface px-4 py-2.5 text-left text-sm text-white/35 transition hover:border-accent/30 hover:text-white/60"
+            className="block w-full rounded-xl border border-white/[0.09] bg-surface px-4 py-2.5 text-left text-sm text-white/35 transition hover:border-accent/30 hover:text-white/60"
           >
             {ex}
           </button>
@@ -262,7 +262,7 @@ export default function DashboardPage() {
 
       <div className="flex flex-col min-h-screen">
         {/* Page header — logo visible on mobile (sidebar hidden), controls visible always */}
-        <header className="sticky top-0 z-30 border-b border-white/7 bg-[#07070f]/90 backdrop-blur-sm">
+        <header className="sticky top-0 z-30 border-b border-white/[0.09] bg-[#0f0f14]/92 backdrop-blur-sm">
           <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
             {/* Mobile: logo; Desktop: page title */}
             <div className="flex items-center gap-2 lg:hidden">
@@ -394,7 +394,7 @@ export default function DashboardPage() {
                   </DndContext>
 
                   {totalPages > 1 && (
-                    <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/7 bg-surface px-4 py-2.5">
+                    <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/[0.09] bg-surface px-4 py-2.5">
                       <button
                         type="button"
                         onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
@@ -436,7 +436,7 @@ export default function DashboardPage() {
                   <button
                     type="button"
                     onClick={() => setCompletedOpen((v) => !v)}
-                    className="flex w-full items-center justify-between rounded-2xl border border-white/7 bg-surface px-4 py-3 transition hover:border-white/12"
+                    className="flex w-full items-center justify-between rounded-2xl border border-white/[0.09] bg-surface px-4 py-3 transition hover:border-white/[0.15]"
                   >
                     <div className="flex items-center gap-2">
                       <div className="flex h-4 w-4 items-center justify-center rounded-full bg-green-950/60 border border-green-800/40">

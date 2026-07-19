@@ -14,11 +14,12 @@ const config: Config = {
           light: "#3b82f6",
           dark: "#1d4ed8",
         },
-        surface: "#0c0c1d",
+        surface: "#1c1c26",
+        "surface-2": "#242430",
         ink: {
-          DEFAULT: "#e8e8f0",
-          2: "rgba(232,232,240,0.62)",
-          3: "rgba(232,232,240,0.38)",
+          DEFAULT: "#eeeef2",
+          2: "rgba(238,238,242,0.60)",
+          3: "rgba(238,238,242,0.35)",
         },
       },
       animation: {

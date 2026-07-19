@@ -94,10 +94,10 @@ export default function TaskRow({ task, isDragMode, isBacklog, onComplete, onPro
     <li
       ref={setNodeRef}
       style={style}
-      className={`group rounded-2xl border bg-surface transition-all duration-200 ${
+      className={`group rounded-xl border bg-surface transition-all duration-200 ${
         isDragging
-          ? "border-accent/40 shadow-lg shadow-accent/10"
-          : "border-white/7 hover:border-white/14"
+          ? "border-accent/50 shadow-lg shadow-accent/10"
+          : "border-white/[0.08] hover:border-white/[0.14] hover:bg-surface-2"
       } ${completing ? "opacity-0 scale-95 pointer-events-none" : ""}`}
     >
       <div className="flex items-start gap-3 p-4">
@@ -147,7 +147,7 @@ export default function TaskRow({ task, isDragMode, isBacklog, onComplete, onPro
           type="button"
           aria-label="Complete task"
           onClick={handleComplete}
-          className="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 border-white/20 transition hover:border-green-400 hover:bg-green-950/30 active:scale-90"
+          className="mt-0.5 h-5 w-5 shrink-0 rounded-full border-2 border-white/25 transition hover:border-green-400 hover:bg-green-950/40 active:scale-90"
         />
 
         {/* Content */}
@@ -217,7 +217,7 @@ export default function TaskRow({ task, isDragMode, isBacklog, onComplete, onPro
       </div>
 
       {panelOpen && (
-        <div className="animate-slide-down border-t border-white/7 px-4 pb-4 pt-3">
+        <div className="animate-slide-down border-t border-white/[0.08] px-4 pb-4 pt-3">
           <MatrixPanel
             task={task}
             onChange={(updates) => onUpdateMatrix(task.id, updates)}

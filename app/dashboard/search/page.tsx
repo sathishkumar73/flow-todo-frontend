@@ -86,7 +86,7 @@ function ActionMenu({ task, onComplete, onSomeday, onDelete, pending }: ActionMe
       {open && (
         <div
           onClick={(e) => e.stopPropagation()}
-          className="absolute right-0 top-full z-50 mt-1 min-w-[150px] animate-fade-in rounded-xl border border-white/10 bg-[#111128] py-1 shadow-xl"
+          className="absolute right-0 top-full z-50 mt-1 min-w-[160px] animate-fade-in rounded-xl border border-white/10 bg-surface-2 py-1 shadow-2xl shadow-black/40"
         >
           {task.status !== "done" && (
             <button
@@ -159,32 +159,42 @@ function TaskCard({
 
   return (
     <li
-      className={`flex items-start gap-3 rounded-2xl border px-4 py-3.5 transition ${
-        isDupe ? "border-yellow-900/40 bg-yellow-950/10" : "border-white/7 bg-surface"
+      className={`group flex items-center gap-3 rounded-xl border px-4 py-3 transition-colors ${
+        isDupe
+          ? "border-yellow-800/30 bg-yellow-950/[0.15] hover:bg-yellow-950/25"
+          : "border-white/[0.08] bg-surface hover:bg-surface-2"
       } ${pending ? "opacity-50" : ""}`}
     >
+      {/* Left accent for duplicates */}
       {isDupe && (
-        <div className="mt-0.5 shrink-0 rounded-md border border-yellow-900/30 bg-yellow-950/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-yellow-500/70">
-          dup
-        </div>
+        <div className="h-7 w-0.5 shrink-0 rounded-full bg-yellow-600/50" />
       )}
+
+      {/* Content */}
       <div className="min-w-0 flex-1">
-        <p className="text-[14px] leading-snug text-ink/85">{highlight(task.title, query)}</p>
-        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-          {statusBadge(task.status)}
-          {task.eisenhower_quadrant && (
-            <span className="rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent/70">
-              {EIS_LABEL[task.eisenhower_quadrant] ?? task.eisenhower_quadrant}
-            </span>
-          )}
-          {task.impact_effort_quadrant && (
-            <span className="rounded-full border border-purple-900/30 bg-purple-950/20 px-2 py-0.5 text-[10px] font-medium text-purple-400/60">
-              {IE_LABEL[task.impact_effort_quadrant] ?? task.impact_effort_quadrant}
-            </span>
-          )}
-          <span className="text-[11px] text-white/20">{timeAgo(task.created_at)}</span>
+        <div className="flex items-baseline gap-2">
+          <p className="min-w-0 flex-1 truncate text-[14px] font-medium leading-snug text-white/90">
+            {highlight(task.title, query)}
+          </p>
+          <span className="shrink-0 text-[11px] tabular-nums text-white/25">{timeAgo(task.created_at)}</span>
         </div>
+        {(task.eisenhower_quadrant || task.impact_effort_quadrant || task.status === "someday") && (
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {statusBadge(task.status)}
+            {task.eisenhower_quadrant && (
+              <span className="rounded-full border border-accent/25 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent/80">
+                {EIS_LABEL[task.eisenhower_quadrant] ?? task.eisenhower_quadrant}
+              </span>
+            )}
+            {task.impact_effort_quadrant && (
+              <span className="rounded-full border border-purple-800/30 bg-purple-950/30 px-2 py-0.5 text-[10px] font-medium text-purple-400/70">
+                {IE_LABEL[task.impact_effort_quadrant] ?? task.impact_effort_quadrant}
+              </span>
+            )}
+          </div>
+        )}
       </div>
+
       <ActionMenu
         task={task}
         pending={pending}
@@ -250,7 +260,7 @@ export default function SearchPage() {
   return (
     <div className="flex flex-col min-h-screen">
       {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-white/7 bg-[#07070f]/90 backdrop-blur-sm">
+      <header className="sticky top-0 z-30 border-b border-white/[0.09] bg-[#0f0f14]/92 backdrop-blur-sm">
         <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
           <div className="flex items-center gap-2 lg:hidden">
             <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-purple-600">
@@ -293,7 +303,7 @@ export default function SearchPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search tasks…"
-              className="w-full rounded-xl border border-white/10 bg-surface py-2.5 pl-10 pr-4 text-sm text-ink placeholder-white/25 outline-none transition focus:border-accent/50 focus:ring-1 focus:ring-accent/20"
+              className="w-full rounded-xl border border-white/[0.12] bg-surface py-2.5 pl-10 pr-4 text-sm text-ink placeholder-white/25 outline-none transition focus:border-accent/50 focus:ring-1 focus:ring-accent/20"
             />
             {query && (
               <button
@@ -328,12 +338,12 @@ export default function SearchPage() {
         {loading ? (
           <div className="space-y-2.5">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-[72px] animate-pulse rounded-2xl border border-white/5 bg-surface" />
+              <div key={i} className="h-[72px] animate-pulse rounded-2xl border border-white/[0.07] bg-surface" />
             ))}
           </div>
         ) : filtered.length === 0 ? (
           <div className="mt-16 text-center animate-fade-in">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/7 bg-surface">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.09] bg-surface">
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-white/20">
                 <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.75" />
                 <path d="M20 20l-3-3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />

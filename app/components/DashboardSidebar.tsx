@@ -74,9 +74,9 @@ export function DashboardSidebar() {
   return (
     <>
       {/* ── Desktop sidebar ── */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-[220px] lg:fixed lg:inset-y-0 border-r border-white/7 bg-[#0a0a1a]">
+      <aside className="hidden lg:flex lg:flex-col lg:w-[220px] lg:fixed lg:inset-y-0 border-r border-white/8 bg-[#0c0c12]">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 border-b border-white/7 px-5 py-4">
+        <div className="flex items-center gap-2.5 border-b border-white/[0.09] px-5 py-4">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-purple-600">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-white">
               <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -94,7 +94,7 @@ export function DashboardSidebar() {
 
         {/* User section */}
         {user && (
-          <div className="border-t border-white/7 px-4 py-4">
+          <div className="border-t border-white/[0.09] px-4 py-4">
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-accent to-purple-600 text-[11px] font-bold text-white">
                 {user.imageUrl ? (
@@ -118,7 +118,7 @@ export function DashboardSidebar() {
       </aside>
 
       {/* ── Mobile bottom tab bar ── */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex border-t border-white/7 bg-[#07070f]/95 backdrop-blur-sm">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-40 flex border-t border-white/8 bg-[#0f0f14]/96 backdrop-blur-md">
         {NAV.map((item) => (
           <NavLink key={item.href} item={item} compact />
         ))}

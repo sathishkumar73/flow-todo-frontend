@@ -207,7 +207,7 @@ function TaskCard({
 }
 
 export default function SearchPage() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, userId } = useAuth();
   const api = useMemo(() => createApi(() => getToken()), [getToken]);
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -215,7 +215,7 @@ export default function SearchPage() {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "someday">("all");
 
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (isLoaded && userId) load(); }, [isLoaded, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function load() {
     setLoading(true);

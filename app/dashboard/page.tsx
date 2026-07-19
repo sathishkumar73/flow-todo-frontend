@@ -255,7 +255,7 @@ function AddRoutineForm({ onAdd, onClose }: { onAdd: (title: string, freq: strin
 
 // ── Main page ────────────────────────────────────────────────────────────────
 export default function HomePage() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded, userId } = useAuth();
   const { user } = useUser();
   const api = useMemo(() => createApi(() => getToken()), [getToken]);
 
@@ -280,14 +280,14 @@ export default function HomePage() {
     setLoading(false);
   }, [api]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => { if (isLoaded && userId) fetchAll(); }, [fetchAll, isLoaded, userId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Refresh on tab focus
   useEffect(() => {
-    const handler = () => { if (document.visibilityState === "visible") fetchAll(); };
+    const handler = () => { if (document.visibilityState === "visible" && userId) fetchAll(); };
     document.addEventListener("visibilitychange", handler);
     return () => document.removeEventListener("visibilitychange", handler);
-  }, [fetchAll]);
+  }, [fetchAll, userId]);
 
   const todayTasks = useMemo(() =>
     tasks.filter((t) => t.status === "active" && isToday(t.created_at))

@@ -64,6 +64,30 @@ const NAV: NavItem[] = [
   },
 ];
 
+const ACCOUNT_NAV: NavItem[] = [
+  {
+    href: "/dashboard/billing",
+    label: "Billing",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <rect x="2" y="5" width="20" height="14" rx="2" stroke="currentColor" strokeWidth="1.75" />
+        <path d="M2 10h20" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+        <path d="M6 15h4" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
+    href: "/dashboard/settings",
+    label: "Settings",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="1.75" />
+        <path d="M12 2v2M12 20v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M2 12h2M20 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+];
+
 function NavLink({ item, compact = false }: { item: NavItem; compact?: boolean }) {
   const pathname = usePathname();
   const isActive = pathname === item.href;
@@ -118,10 +142,22 @@ export function DashboardSidebar() {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 space-y-1 px-3 py-4">
-          {NAV.map((item) => (
-            <NavLink key={item.href} item={item} />
-          ))}
+        <nav className="flex-1 px-3 py-4 flex flex-col">
+          <div className="space-y-1">
+            {NAV.map((item) => (
+              <NavLink key={item.href} item={item} />
+            ))}
+          </div>
+          <div className="mt-auto pt-4">
+            <p className="px-3 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-white/20">
+              Account
+            </p>
+            <div className="space-y-1">
+              {ACCOUNT_NAV.map((item) => (
+                <NavLink key={item.href} item={item} />
+              ))}
+            </div>
+          </div>
         </nav>
 
         {/* User section */}

@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import Link from 'next/link'
 import { Metadata } from 'next'
-import { getBlogPosts, getCategories } from '@/lib/blog'
+import { getBlogPosts } from '@/lib/blog'
 import BlogGrid from '@/components/blog/BlogGrid'
 import Pagination from '@/components/blog/Pagination'
 
@@ -25,14 +25,6 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
   }
 }
 
-const CATEGORIES = [
-  { name: 'All', slug: 'all' },
-  { name: 'Prioritization', slug: 'prioritization-frameworks' },
-  { name: 'Alternatives', slug: 'alternatives' },
-  { name: 'ADHD & Focus', slug: 'adhd-focus' },
-  { name: 'Productivity', slug: 'productivity' },
-]
-
 export default async function BlogPage({
   searchParams,
 }: {
@@ -41,19 +33,11 @@ export default async function BlogPage({
   const { page = '1', category, search } = await searchParams
   const currentPage = Math.max(1, parseInt(page))
 
-  const [postsResult, categories] = await Promise.all([
-    getBlogPosts({ page: currentPage, category, search, limit: 6 }).catch(() => ({
-      posts: [] as import('@/lib/blog').BlogPost[],
-      totalPages: 0,
-      totalPosts: 0,
-    })),
-    getCategories(),
-  ])
-  const { posts, totalPages, totalPosts } = postsResult
-
-  const allCategories = categories.length > 0
-    ? [{ name: 'All', slug: 'all' }, ...categories]
-    : CATEGORIES
+  const { posts, totalPages, totalPosts } = await getBlogPosts({ page: currentPage, category, search, limit: 6 }).catch(() => ({
+    posts: [] as import('@/lib/blog').BlogPost[],
+    totalPages: 0,
+    totalPosts: 0,
+  }))
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -89,26 +73,6 @@ export default async function BlogPage({
             </p>
           </div>
         </section>
-
-        {/* Category Pills */}
-        <div className="border-b sticky top-0 z-10" style={{ borderColor: 'rgba(255,255,255,0.07)', background: '#07070F' }}>
-          <div className="container mx-auto px-4 md:px-6 py-3 flex gap-2 overflow-x-auto scrollbar-none">
-            {allCategories.map(cat => {
-              const isActive = (!category && cat.slug === 'all') || category === cat.slug
-              return (
-                <Link key={cat.slug}
-                  href={cat.slug === 'all' ? '/blog' : `/blog/category/${cat.slug}`}
-                  className="shrink-0 px-4 py-1.5 rounded-full text-sm font-medium transition-all"
-                  style={isActive
-                    ? { background: 'linear-gradient(135deg,#2563EB,#7C3AED)', color: '#fff' }
-                    : { background: 'rgba(255,255,255,0.05)', color: 'rgba(232,232,240,0.62)', border: '1px solid rgba(255,255,255,0.07)' }
-                  }>
-                  {cat.name}
-                </Link>
-              )
-            })}
-          </div>
-        </div>
 
         {/* Posts */}
         <main className="container mx-auto px-4 md:px-6 py-12 max-w-6xl">

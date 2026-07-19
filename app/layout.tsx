@@ -132,6 +132,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd.website) }}
           />
           <link rel="preconnect" href="https://cdn.flowtodo.app" crossOrigin="anonymous" />
+          <link rel="alternate" type="application/rss+xml" title="Flow Todo Blog" href="https://flowtodo.app/blog/feed.xml" />
         </head>
         <body className="min-h-screen antialiased">{children}</body>
       </html>

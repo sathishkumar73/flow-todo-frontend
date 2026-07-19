@@ -8,7 +8,7 @@ import BlogGrid from '@/components/blog/BlogGrid'
 
 const BlogContent = dynamic(() => import('@/components/blog/BlogContent'))
 
-export const revalidate = 60
+export const revalidate = 3600
 
 const BASE = 'https://flowtodo.app'
 
@@ -85,25 +85,6 @@ export default async function BlogPostPage({ params }: Props) {
       <script type="application/ld+json" suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       <div className="min-h-screen" style={{ background: '#07070F' }}>
-        {/* Header */}
-        <header className="border-b" style={{ borderColor: border, background: '#0C0C1D' }}>
-          <div className="container mx-auto px-4 md:px-6">
-            <div className="flex items-center justify-between h-14">
-              <Link href="/blog" className="flex items-center gap-2 text-sm transition-colors"
-                style={{ color: ink3 }}>
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                </svg>
-                Back to Blog
-              </Link>
-              <Link href="/" className="text-base font-bold"
-                style={{ background: 'linear-gradient(135deg,#60A5FA,#A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                Flow Todo
-              </Link>
-            </div>
-          </div>
-        </header>
-
         {/* Breadcrumb */}
         <div className="border-b" style={{ borderColor: border, background: '#0C0C1D' }}>
           <div className="container mx-auto px-4 md:px-6 py-2">
@@ -223,7 +204,7 @@ export default async function BlogPostPage({ params }: Props) {
             <p className="mb-6" style={{ color: ink2 }}>
               Flow Todo auto-scores every task so you always know your top 10. Free to start.
             </p>
-            <Link href="/app"
+            <Link href="/sign-up"
               className="inline-block px-8 py-3 rounded-lg font-semibold text-white"
               style={{ background: 'linear-gradient(135deg,#2563EB 0%,#7C3AED 100%)' }}>
               Try Flow Todo Free

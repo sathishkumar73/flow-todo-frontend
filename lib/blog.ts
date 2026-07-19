@@ -39,24 +39,28 @@ export async function getBlogPosts({
   search?: string;
   limit?: number;
 }): Promise<BlogPostsResponse> {
-  const params = new URLSearchParams();
-  params.set("page", page.toString());
-  params.set("limit", limit.toString());
-  if (category && category !== "all") params.set("category", category);
-  if (search) params.set("search", search);
+  try {
+    const params = new URLSearchParams();
+    params.set("page", page.toString());
+    params.set("limit", limit.toString());
+    if (category && category !== "all") params.set("category", category);
+    if (search) params.set("search", search);
 
-  // cache: no-store so each ISR revalidation always hits the live API — prevents
-  // a backend blip from caching empty posts for 5 minutes
-  const res = await fetch(`${API_URL}/api/v1/blog/posts?${params}`, {
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error(`Blog API error: ${res.status}`);
-  const data = await res.json();
-  return {
-    posts: data.posts || [],
-    totalPages: data.total_pages || 0,
-    totalPosts: data.total_posts || 0,
-  };
+    // cache: no-store so ISR revalidations always fetch fresh data — prevents
+    // a backend blip from caching an empty list for the full revalidate window
+    const res = await fetch(`${API_URL}/api/v1/blog/posts?${params}`, {
+      cache: "no-store",
+    });
+    if (!res.ok) return { posts: [], totalPages: 0, totalPosts: 0 };
+    const data = await res.json();
+    return {
+      posts: data.posts || [],
+      totalPages: data.total_pages || 0,
+      totalPosts: data.total_posts || 0,
+    };
+  } catch {
+    return { posts: [], totalPages: 0, totalPosts: 0 };
+  }
 }
 
 export async function getBlogPost(slug: string): Promise<BlogPost | null> {

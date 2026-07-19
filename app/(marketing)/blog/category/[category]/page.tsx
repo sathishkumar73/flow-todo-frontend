@@ -5,19 +5,29 @@ import { getBlogPosts } from '@/lib/blog'
 import BlogGrid from '@/components/blog/BlogGrid'
 import Pagination from '@/components/blog/Pagination'
 
-export const revalidate = 60
+export const revalidate = 3600
 
 const BASE = 'https://flowtodo.app'
 
 interface Props { params: Promise<{ category: string }>; searchParams: Promise<{ page?: string }> }
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { category } = await params
+  const { page = '1' } = await searchParams
   const name = category.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+  const title = `${name} — Flow Todo Blog`
+  const description = `Productivity guides on ${name.toLowerCase()} from Flow Todo. Practical tips for task management and focus.`
   return {
-    title: { absolute: `${name} — Flow Todo Blog` },
-    description: `Productivity guides on ${name.toLowerCase()} from Flow Todo.`,
+    title: { absolute: title },
+    description,
     alternates: { canonical: `${BASE}/blog/category/${category}` },
+    ...(parseInt(page) > 1 && { robots: 'noindex, follow' }),
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      url: `${BASE}/blog/category/${category}`,
+    },
   }
 }
 
@@ -34,7 +44,19 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const ink2 = 'rgba(232,232,240,0.62)'
   const ink3 = 'rgba(232,232,240,0.38)'
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'CollectionPage',
+    name: `${name} — Flow Todo Blog`,
+    description: `Productivity guides on ${name.toLowerCase()} from Flow Todo.`,
+    url: `${BASE}/blog/category/${category}`,
+    publisher: { '@type': 'Organization', name: 'Flow Todo', url: BASE },
+  }
+
   return (
+    <>
+      <script type="application/ld+json" suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
     <div className="min-h-screen" style={{ background: '#07070F' }}>
       {/* Header */}
       <section className="border-b py-12 text-center" style={{ borderColor: border }}>
@@ -74,5 +96,6 @@ export default async function CategoryPage({ params, searchParams }: Props) {
         )}
       </main>
     </div>
+    </>
   )
 }

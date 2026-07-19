@@ -5,7 +5,7 @@ import { getBlogPosts, getCategories } from '@/lib/blog'
 import BlogGrid from '@/components/blog/BlogGrid'
 import Pagination from '@/components/blog/Pagination'
 
-export const revalidate = 60
+export const revalidate = 3600
 
 const BASE = 'https://flowtodo.app'
 
@@ -132,7 +132,7 @@ export default async function BlogPage({
             <p className="mb-6" style={{ color: 'rgba(232,232,240,0.62)' }}>
               Flow Todo surfaces your top 10 tasks automatically — no setup, no decision fatigue.
             </p>
-            <Link href="/app"
+            <Link href="/sign-up"
               className="inline-block px-8 py-3 rounded-lg font-semibold text-white transition-all"
               style={{ background: 'linear-gradient(135deg,#2563EB 0%,#7C3AED 100%)' }}>
               Try Flow Todo Free

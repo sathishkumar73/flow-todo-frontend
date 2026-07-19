@@ -16,15 +16,6 @@ const border = 'rgba(255,255,255,0.07)'
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen" style={{ background: '#07070F' }}>
-      <header className="border-b py-4" style={{ borderColor: border }}>
-        <div className="container mx-auto px-4 md:px-6 flex items-center justify-between">
-          <Link href="/" className="text-lg font-bold"
-            style={{ background: 'linear-gradient(135deg,#60A5FA,#A78BFA)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            Flow Todo
-          </Link>
-        </div>
-      </header>
-
       <main className="container mx-auto px-4 md:px-6 py-16 max-w-3xl">
         <h1 className="text-4xl font-bold mb-4" style={{ color: ink }}>Privacy Policy</h1>
         <p className="text-sm mb-12" style={{ color: ink3 }}>Last updated: July 18, 2026</p>

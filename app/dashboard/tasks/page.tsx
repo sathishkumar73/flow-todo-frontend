@@ -280,11 +280,11 @@ export default function DashboardPage() {
             <span className="hidden lg:block text-sm font-semibold text-white/30">Tasks</span>
 
             <div className="flex items-center gap-2">
-              {/* Brain Dump button */}
+              {/* Brain Dump button — desktop only; mobile uses floating FAB */}
               <button
                 type="button"
                 onClick={() => setShowDump(true)}
-                className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-surface px-3 py-1.5 text-xs font-medium text-white/50 transition hover:border-accent/30 hover:text-accent"
+                className="hidden sm:flex items-center gap-1.5 rounded-xl border border-white/10 bg-surface px-3 py-1.5 text-xs font-medium text-white/50 transition hover:border-accent/30 hover:text-accent"
               >
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
                   <path d="M12 2C8 2 5 5 5 9c0 2.4 1.1 4.5 2.8 5.9L8 18h8l.2-3.1C17.9 13.5 19 11.4 19 9c0-4-3-7-7-7z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
@@ -292,31 +292,15 @@ export default function DashboardPage() {
                 </svg>
                 Brain Dump
               </button>
-
-              {/* Sort toggle */}
-              <div className="flex items-center rounded-full border border-white/10 bg-surface p-0.5">
-                {(["stack", "priority"] as SortMode[]).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setMode(m)}
-                    className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-all ${
-                      mode === m ? "bg-accent text-white" : "text-white/40 hover:text-white/60"
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
             </div>
           </div>
         </header>
 
         <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6">
 
-          {/* Stats */}
+          {/* Stats — mobile only (desktop stats live in the right sidebar) */}
           {!loading && (
-            <div className="mb-5 grid grid-cols-4 gap-2">
+            <div className="mb-5 grid grid-cols-4 gap-2 xl:hidden">
               <StatCard value={activeTasks.length} label="Active" accent="text-accent" />
               <StatCard value={completedToday.length} label="Done today" accent="text-green-400" />
               <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-white/[0.09] bg-surface px-2 py-3">
@@ -359,120 +343,180 @@ export default function DashboardPage() {
             </div>
           </form>
 
-          {/* AI panels */}
-          <BriefingCard fetchBriefing={() => api.get<{ date: string; content: string }>("/api/v1/briefing")} />
-          <InsightsBanner fetchInsights={() => api.get<{ burnout_signal: boolean; message: string | null }>("/api/v1/insights")} />
-          <TriagePanel
-            staleTasks={staleTasks}
-            onTriage={async (id: number, action: string) => {
-              await api.post(`/api/v1/tasks/${id}/triage`, { action });
-              if (action !== "do_this_week") setTasks((prev) => prev.filter((t) => t.id !== id));
-            }}
-            onDone={() => { setStaleTasks([]); fetchAll(); }}
-          />
+          {/* 2-column layout */}
+          <div className="xl:grid xl:grid-cols-[1fr_360px] xl:gap-6 xl:items-start">
 
-          {/* Task list */}
-          {loading ? (
-            <div className="space-y-2.5">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-[60px] animate-pulse rounded-2xl border border-white/5 bg-surface" />
-              ))}
-            </div>
-          ) : activeTasks.length === 0 && completedToday.length === 0 ? (
-            <EmptyState onAdd={submitTask} onDump={() => setShowDump(true)} />
-          ) : (
-            <>
-              {pageTasks.length > 0 && (
-                <>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[11px] font-semibold uppercase tracking-widest text-white/25">Tasks</span>
-                    <span className="text-[11px] text-white/20">
-                      {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, sorted.length)} of {sorted.length}
-                      {isDragMode && " · drag to reorder"}
-                    </span>
+            {/* LEFT: task list */}
+            <div>
+              {/* Sort toggle — inside left column, above task list */}
+              {!loading && activeTasks.length > 0 && (
+                <div className="mb-3 flex items-center justify-between">
+                  <div className="flex items-center rounded-full border border-white/10 bg-surface p-0.5">
+                    {(["stack", "priority"] as SortMode[]).map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setMode(m)}
+                        className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-all ${
+                          mode === m ? "bg-accent text-white" : "text-white/40 hover:text-white/60"
+                        }`}
+                      >
+                        {m}
+                      </button>
+                    ))}
                   </div>
-
-                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <SortableContext items={pageTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                      <ul className="space-y-2">
-                        {pageTasks.map((task) => (
-                          <TaskRow key={task.id} task={task} isDragMode={isDragMode} onComplete={completeTask} onUpdateMatrix={updateMatrix} />
-                        ))}
-                      </ul>
-                    </SortableContext>
-                  </DndContext>
-
-                  {totalPages > 1 && (
-                    <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/[0.09] bg-surface px-4 py-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={safePage === 1}
-                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/40 transition hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-25"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        Prev
-                      </button>
-                      <div className="flex items-center gap-1.5">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                          <button
-                            key={p}
-                            type="button"
-                            onClick={() => setCurrentPage(p)}
-                            className={`h-7 w-7 rounded-lg text-xs font-medium transition ${p === safePage ? "bg-accent text-white" : "text-white/30 hover:bg-white/5 hover:text-white/60"}`}
-                          >
-                            {p}
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={safePage === totalPages}
-                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/40 transition hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-25"
-                      >
-                        Next
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Completed today */}
-              {completedToday.length > 0 && (
-                <div className="mt-4">
-                  <button
-                    type="button"
-                    onClick={() => setCompletedOpen((v) => !v)}
-                    className="flex w-full items-center justify-between rounded-2xl border border-white/[0.09] bg-surface px-4 py-3 transition hover:border-white/[0.15]"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-4 w-4 items-center justify-center rounded-full bg-green-950/60 border border-green-800/40">
-                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l1.8 2L6.5 2" stroke="#4ade80" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      </div>
-                      <span className="text-sm text-white/35">Completed today</span>
-                      <span className="rounded-full border border-green-900/40 bg-green-950/30 px-2 py-0.5 text-xs text-green-400/70">{completedToday.length}</span>
-                    </div>
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className={`text-white/25 transition-transform duration-200 ${completedOpen ? "rotate-180" : ""}`}>
-                      <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                  {completedOpen && (
-                    <div className="mt-2 animate-slide-down rounded-2xl border border-white/5 bg-surface px-4">
-                      <ul className="divide-y divide-white/5">
-                        {completedToday.map((task) => <CompletedRow key={task.id} task={task} />)}
-                      </ul>
+                  {streak > 0 && (
+                    <div className="flex items-center gap-1 rounded-xl border border-orange-500/20 bg-orange-500/10 px-2.5 py-1.5 xl:hidden">
+                      <span className="text-sm leading-none">🔥</span>
+                      <span className="text-sm font-bold text-orange-400 tabular-nums">{streak}</span>
                     </div>
                   )}
                 </div>
               )}
-            </>
-          )}
 
-          <RetroPanel fetchRetro={() => api.get<{ week_start: string; content: string }>("/api/v1/insights/retrospective")} />
+              {/* Task list */}
+              {loading ? (
+                <div className="space-y-2.5">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="h-[60px] animate-pulse rounded-2xl border border-white/5 bg-surface" />
+                  ))}
+                </div>
+              ) : activeTasks.length === 0 && completedToday.length === 0 ? (
+                <EmptyState onAdd={submitTask} onDump={() => setShowDump(true)} />
+              ) : (
+                <>
+                  {pageTasks.length > 0 && (
+                    <>
+                      <div className="mb-2 flex items-center justify-between">
+                        <span className="text-[11px] font-semibold uppercase tracking-widest text-white/25">Tasks</span>
+                        <span className="text-[11px] text-white/20">
+                          {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, sorted.length)} of {sorted.length}
+                          {isDragMode && " · drag to reorder"}
+                        </span>
+                      </div>
+
+                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                        <SortableContext items={pageTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                          <ul className="space-y-2">
+                            {pageTasks.map((task) => (
+                              <TaskRow key={task.id} task={task} isDragMode={isDragMode} onComplete={completeTask} onUpdateMatrix={updateMatrix} />
+                            ))}
+                          </ul>
+                        </SortableContext>
+                      </DndContext>
+
+                      {/* Pagination */}
+                      {totalPages > 1 && (
+                        <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/[0.09] bg-surface px-4 py-2.5">
+                          <button type="button" onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage === 1}
+                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/40 transition hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-25">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                            Prev
+                          </button>
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
+                              const p = totalPages <= 7 ? i + 1 : safePage <= 4 ? i + 1 : safePage >= totalPages - 3 ? totalPages - 6 + i : safePage - 3 + i;
+                              return (
+                                <button key={p} type="button" onClick={() => setCurrentPage(p)}
+                                  className={`h-7 w-7 rounded-lg text-xs font-medium transition ${p === safePage ? "bg-accent text-white" : "text-white/30 hover:bg-white/5 hover:text-white/60"}`}>
+                                  {p}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <button type="button" onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage === totalPages}
+                            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/40 transition hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-25">
+                            Next
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {/* Completed today */}
+                  {completedToday.length > 0 && (
+                    <div className="mt-4">
+                      <button type="button" onClick={() => setCompletedOpen((v) => !v)}
+                        className="flex w-full items-center justify-between rounded-2xl border border-white/[0.09] bg-surface px-4 py-3 transition hover:border-white/[0.15]">
+                        <div className="flex items-center gap-2">
+                          <div className="flex h-4 w-4 items-center justify-center rounded-full bg-green-950/60 border border-green-800/40">
+                            <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l1.8 2L6.5 2" stroke="#4ade80" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                          </div>
+                          <span className="text-sm text-white/35">Completed today</span>
+                          <span className="rounded-full border border-green-900/40 bg-green-950/30 px-2 py-0.5 text-xs text-green-400/70">{completedToday.length}</span>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"
+                          className={`text-white/25 transition-transform duration-200 ${completedOpen ? "rotate-180" : ""}`}>
+                          <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </button>
+                      {completedOpen && (
+                        <div className="mt-2 animate-slide-down rounded-2xl border border-white/5 bg-surface px-4">
+                          <ul className="divide-y divide-white/5">
+                            {completedToday.map((task) => <CompletedRow key={task.id} task={task} />)}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* RIGHT: stats + AI panels (xl+ sticky) */}
+            <aside className="mt-5 space-y-3 xl:mt-0 xl:sticky xl:top-[49px] xl:max-h-[calc(100vh-49px)] xl:overflow-y-auto xl:pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {/* Stats grid — right column on desktop */}
+              {!loading && (
+                <div className="hidden xl:grid grid-cols-2 gap-2">
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.09] bg-surface px-3 py-3.5">
+                    <span className="text-2xl font-bold tabular-nums leading-none text-accent">{activeTasks.length}</span>
+                    <span className="mt-1 text-[10px] font-medium uppercase tracking-widest text-white/30">Active</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.09] bg-surface px-3 py-3.5">
+                    <span className="text-2xl font-bold tabular-nums leading-none text-green-400">{completedToday.length}</span>
+                    <span className="mt-1 text-[10px] font-medium uppercase tracking-widest text-white/30">Done today</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.09] bg-surface px-3 py-3.5">
+                    <span className="text-2xl font-bold tabular-nums leading-none text-orange-400">
+                      {streak > 0 ? `${streak}🔥` : "—"}
+                    </span>
+                    <span className="mt-1 text-[10px] font-medium uppercase tracking-widest text-white/30">Streak</span>
+                  </div>
+                  <div className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.09] bg-surface px-3 py-3.5">
+                    <span className="text-2xl font-bold tabular-nums leading-none text-white/60">{totalPages}</span>
+                    <span className="mt-1 text-[10px] font-medium uppercase tracking-widest text-white/30">Pages</span>
+                  </div>
+                </div>
+              )}
+              <BriefingCard fetchBriefing={() => api.get<{ date: string; content: string }>("/api/v1/briefing")} />
+              <InsightsBanner fetchInsights={() => api.get<{ burnout_signal: boolean; message: string | null }>("/api/v1/insights")} />
+              <TriagePanel
+                staleTasks={staleTasks}
+                onTriage={async (id: number, action: string) => {
+                  await api.post(`/api/v1/tasks/${id}/triage`, { action });
+                  if (action !== "do_this_week") setTasks((prev) => prev.filter((t) => t.id !== id));
+                }}
+                onDone={() => { setStaleTasks([]); fetchAll(); }}
+              />
+              <RetroPanel fetchRetro={() => api.get<{ week_start: string; content: string }>("/api/v1/insights/retrospective")} />
+            </aside>
+          </div>
         </main>
       </div>
+
+      {/* Mobile floating Brain Dump FAB */}
+      <button
+        type="button"
+        onClick={() => setShowDump(true)}
+        className="sm:hidden fixed bottom-[84px] right-4 z-40 flex h-12 w-12 items-center justify-center rounded-full bg-accent shadow-lg shadow-accent/30 transition hover:bg-accent/80 active:scale-95"
+        aria-label="Brain Dump"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-white">
+          <path d="M12 2C8 2 5 5 5 9c0 2.4 1.1 4.5 2.8 5.9L8 18h8l.2-3.1C17.9 13.5 19 11.4 19 9c0-4-3-7-7-7z" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M9 21h6M10 18v3M14 18v3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round"/>
+        </svg>
+      </button>
     </>
   );
 }

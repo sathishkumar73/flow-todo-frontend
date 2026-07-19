@@ -318,56 +318,116 @@ export default function SearchPage() {
         </div>
       </header>
 
-      <main className="flex-1 px-4 py-5 sm:px-6">
-        {/* Stats row */}
-        {!loading && (
-          <div className="mb-4 flex items-center justify-between text-sm">
-            <span className="text-white/30">
-              {filtered.length} task{filtered.length !== 1 ? "s" : ""}
-              {query && <span className="text-white/20"> matching "{query}"</span>}
-            </span>
-            {dupeCount > 0 && (
-              <span className="flex items-center gap-1.5 rounded-full border border-yellow-900/30 bg-yellow-950/20 px-2.5 py-0.5 text-xs text-yellow-400/70">
-                <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v4M6 8v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2"/></svg>
-                {dupeCount} duplicate group{dupeCount !== 1 ? "s" : ""}
-              </span>
-            )}
-          </div>
-        )}
+      <main className="flex-1 xl:grid xl:grid-cols-[1fr_320px] xl:gap-6 xl:items-start px-4 py-5 sm:px-6 xl:px-8 xl:py-6 max-w-[1440px] mx-auto w-full">
 
-        {loading ? (
-          <div className="space-y-2.5">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-[72px] animate-pulse rounded-2xl border border-white/[0.07] bg-surface" />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="mt-16 text-center animate-fade-in">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.09] bg-surface">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-white/20">
-                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.75" />
-                <path d="M20 20l-3-3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-              </svg>
+        {/* ═══ LEFT: results list ═══════════════════════════════════════════ */}
+        <div className="min-w-0">
+          {/* Results count row */}
+          {!loading && (
+            <div className="mb-4 flex items-center justify-between text-sm">
+              <span className="text-white/30">
+                {filtered.length} task{filtered.length !== 1 ? "s" : ""}
+                {query && <span className="text-white/20"> for &ldquo;{query}&rdquo;</span>}
+              </span>
+              {dupeCount > 0 && (
+                <span className="flex items-center gap-1.5 rounded-full border border-yellow-900/30 bg-yellow-950/20 px-2.5 py-0.5 text-xs text-yellow-400/70">
+                  <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 2v4M6 8v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/><circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2"/></svg>
+                  {dupeCount} duplicate group{dupeCount !== 1 ? "s" : ""}
+                </span>
+              )}
             </div>
-            <p className="text-sm text-white/30">
-              {query ? `No tasks matching "${query}"` : "No tasks yet"}
-            </p>
-          </div>
-        ) : (
-          <ul className="space-y-2">
-            {filtered.map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                isDupe={dupes.has(task.id)}
-                query={query}
-                onComplete={handleComplete}
-                onSomeday={handleSomeday}
-                onDelete={handleDelete}
-              />
-            ))}
-          </ul>
-        )}
+          )}
+
+          {loading ? (
+            <div className="space-y-2.5">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-[72px] animate-pulse rounded-2xl border border-white/[0.07] bg-surface" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="mt-16 text-center animate-fade-in">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.09] bg-surface">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="text-white/20">
+                  <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.75" />
+                  <path d="M20 20l-3-3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                </svg>
+              </div>
+              <p className="text-sm text-white/30">
+                {query ? `No tasks matching "${query}"` : "No tasks yet"}
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {filtered.map((task) => (
+                <TaskCard
+                  key={task.id}
+                  task={task}
+                  isDupe={dupes.has(task.id)}
+                  query={query}
+                  onComplete={handleComplete}
+                  onSomeday={handleSomeday}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {/* ═══ RIGHT: stats panel (xl+ only) ════════════════════════════════ */}
+        <aside className="hidden xl:flex xl:flex-col xl:gap-4 xl:sticky xl:top-[49px] xl:self-start xl:max-h-[calc(100vh-49px)] xl:overflow-y-auto xl:pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+
+          {/* Summary counts */}
+          {!loading && (
+            <>
+              <div className="grid grid-cols-2 gap-2.5">
+                {[
+                  { value: tasks.filter((t) => t.status === "active").length, label: "Active", color: "text-accent" },
+                  { value: tasks.filter((t) => t.status === "someday").length, label: "Someday", color: "text-amber-400" },
+                  { value: tasks.length, label: "Total", color: "text-white/60" },
+                  { value: dupeCount, label: "Dupe groups", color: "text-yellow-400" },
+                ].map(({ value, label, color }) => (
+                  <div key={label} className="flex flex-col items-center justify-center rounded-2xl border border-white/[0.08] bg-[#13131c] px-3 py-3.5">
+                    <span className={`text-2xl font-bold tabular-nums leading-none ${color}`}>{value}</span>
+                    <span className="mt-1 text-[10px] font-medium uppercase tracking-widest text-white/30">{label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Duplicate alert */}
+              {dupeCount > 0 && (
+                <div className="rounded-2xl border border-yellow-800/20 bg-yellow-950/10 p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-yellow-400 shrink-0">
+                      <path d="M7 2v4M7 8.5v.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                      <circle cx="7" cy="7" r="6" stroke="currentColor" strokeWidth="1.2"/>
+                    </svg>
+                    <span className="text-xs font-semibold text-yellow-400/80">Duplicate tasks found</span>
+                  </div>
+                  <p className="text-[11px] text-white/35 leading-relaxed">
+                    {dupeCount} group{dupeCount !== 1 ? "s" : ""} of tasks with identical titles. Review and delete duplicates to keep your list clean.
+                  </p>
+                </div>
+              )}
+
+              {/* Tips */}
+              <div className="rounded-2xl border border-white/[0.08] bg-[#13131c] p-4">
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-white/25 mb-3">Tips</p>
+                <div className="space-y-2.5">
+                  {[
+                    { icon: "⚡", tip: "Use the filter to focus on Someday tasks for your weekly review" },
+                    { icon: "🗑️", tip: "Duplicate tasks are highlighted in yellow — delete the extras" },
+                    { icon: "📅", tip: "Move tasks to Someday to park them without deleting" },
+                  ].map(({ icon, tip }) => (
+                    <div key={tip} className="flex items-start gap-2">
+                      <span className="text-sm shrink-0 leading-none mt-0.5">{icon}</span>
+                      <span className="text-[11px] text-white/30 leading-relaxed">{tip}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+        </aside>
       </main>
     </div>
   );

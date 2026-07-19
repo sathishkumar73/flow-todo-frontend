@@ -30,7 +30,7 @@ export default function BriefingCard({ fetchBriefing }: BriefingCardProps) {
   if (dismissed || !briefing) return null;
 
   return (
-    <div className="mb-4 animate-fade-in rounded-2xl border border-accent/20 bg-accent/8 px-4 py-3">
+    <div className="mb-4 animate-fade-in rounded-2xl border border-accent/20 bg-accent/10 px-4 py-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="mb-1 text-[10px] font-semibold uppercase tracking-widest text-accent">

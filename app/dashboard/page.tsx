@@ -390,116 +390,257 @@ export default function HomePage() {
           </div>
         </header>
 
-        <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6 space-y-5">
+        <main className="flex-1 xl:grid xl:grid-cols-[1fr_360px] xl:gap-6 xl:items-start px-4 py-5 sm:px-6 sm:py-6 xl:px-8 xl:py-8 max-w-[1440px] mx-auto w-full">
 
-          {/* ── Greeting ── */}
-          <div>
-            <h1 className="text-xl font-bold text-ink">{greeting(user?.firstName ?? "")} 👋</h1>
-            <p className="text-sm text-white/35">
-              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
-            </p>
+          {/* ═══ LEFT: capture + today ════════════════════════════════════════ */}
+          <div className="space-y-5 min-w-0">
+            {/* Greeting */}
+            <div>
+              <h1 className="text-xl font-bold text-ink">{greeting(user?.firstName ?? "")} 👋</h1>
+              <p className="text-sm text-white/35">
+                {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+              </p>
+            </div>
+
+            {/* Quick capture */}
+            <form onSubmit={quickAdd} className="relative">
+              <input value={quickTitle} onChange={(e) => setQuickTitle(e.target.value)}
+                placeholder="Quick capture — what needs to happen?"
+                className="w-full rounded-2xl border border-white/[0.09] bg-surface px-4 py-3.5 pr-24 text-[15px] text-ink placeholder-white/20 outline-none transition focus:border-accent/50 focus:ring-1 focus:ring-accent/20" />
+              {quickTitle.trim() && (
+                <button type="submit" disabled={adding}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent-dark disabled:opacity-50">
+                  {adding ? "…" : "Add"}
+                </button>
+              )}
+            </form>
+
+            {/* Today section */}
+            <section>
+              <div className="mb-2.5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-semibold uppercase tracking-widest text-white/30">Today</span>
+                  {dueRoutines.length > 0 && (
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      doneRoutineCount === dueRoutines.length
+                        ? "bg-green-950/40 text-green-400"
+                        : "bg-accent/10 text-accent"
+                    }`}>
+                      {doneRoutineCount}/{dueRoutines.length} routines
+                    </span>
+                  )}
+                </div>
+                <button type="button" onClick={() => setShowAddRoutine((v) => !v)}
+                  className="flex items-center gap-1 text-[11px] text-white/30 transition hover:text-accent">
+                  <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                    <path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+                  </svg>
+                  Add routine
+                </button>
+              </div>
+
+              {showAddRoutine && (
+                <AddRoutineForm onAdd={addRoutine} onClose={() => setShowAddRoutine(false)} />
+              )}
+
+              {loading ? (
+                <div className="space-y-2">
+                  {[...Array(3)].map((_, i) => <Skeleton key={i} cls="h-10" />)}
+                </div>
+              ) : (dueRoutines.length === 0 && todayTasks.length === 0) ? (
+                <div className="rounded-xl border border-white/[0.07] bg-surface px-4 py-5 text-center">
+                  <p className="text-sm text-white/30">Nothing captured today yet.</p>
+                  <p className="mt-0.5 text-[11px] text-white/20">Quick-add above or use Brain Dump.</p>
+                </div>
+              ) : (
+                <ul className="space-y-1.5 relative">
+                  {dueRoutines.map((r) => (
+                    <RoutineRow key={r.id} routine={r} onToggle={toggleRoutine} onDelete={deleteRoutine} />
+                  ))}
+                  {todayTasks.map((t) => (
+                    <TodayTaskRow key={t.id} task={t} onComplete={completeTask} />
+                  ))}
+                </ul>
+              )}
+            </section>
+
+            {/* Mobile-only: stat cards, charts — shown below today on mobile, hidden on xl+ (right col handles it) */}
+            <div className="xl:hidden space-y-5">
+              {/* Stat cards */}
+              {loading ? (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[...Array(4)].map((_, i) => <Skeleton key={i} cls="h-[88px]" />)}
+                </div>
+              ) : stats && (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                  {[
+                    { value: stats.active, label: "Active", href: "/dashboard/tasks", color: "text-accent" },
+                    { value: stats.completed_today, label: "Done today", href: "/dashboard/tasks", color: "text-green-400" },
+                    { value: stats.completed_week, label: "This week", href: "/dashboard/tasks", color: "text-emerald-400" },
+                    { value: stats.someday, label: "Someday", href: "/dashboard/search?filter=someday", color: "text-amber-400" },
+                  ].map(({ value, label, href, color }) => (
+                    <Link key={label} href={href}
+                      className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-surface p-4 transition hover:border-white/[0.14] hover:bg-surface-2">
+                      <div className={`text-3xl font-bold tabular-nums leading-none ${color}`}>{value}</div>
+                      <div className="mt-2 text-[11px] font-medium text-white/40">{label}</div>
+                    </Link>
+                  ))}
+                </div>
+              )}
+              {/* Charts */}
+              {loading ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Skeleton cls="h-[150px]" /><Skeleton cls="h-[150px]" />
+                </div>
+              ) : stats && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-[12px] font-semibold text-white/50">Last 7 days</span>
+                      <span className="text-[11px] text-white/25">{stats.daily_completions.reduce((s, d) => s + d.count, 0)} done</span>
+                    </div>
+                    <BarChart data={stats.daily_completions} />
+                  </div>
+                  <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
+                    <div className="mb-3"><span className="text-[12px] font-semibold text-white/50">AI coverage</span></div>
+                    <div className="flex items-center gap-4">
+                      <RingChart value={stats.ai_scored} max={stats.active} />
+                      <div className="flex-1 space-y-2.5">
+                        {[
+                          { label: "Scored", value: stats.ai_scored, cls: "bg-accent" },
+                          { label: "Pending", value: stats.active - stats.ai_scored, cls: "bg-white/20" },
+                        ].map(({ label, value, cls }) => (
+                          <div key={label}>
+                            <div className="flex justify-between text-[11px] text-white/40 mb-1">
+                              <span>{label}</span><span className="font-medium text-ink">{value}</span>
+                            </div>
+                            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/[0.07]">
+                              <div className={`h-full rounded-full transition-all duration-700 ${cls}`}
+                                style={{ width: stats.active > 0 ? `${(value / stats.active) * 100}%` : "0%" }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              {/* Matrices */}
+              {loading ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <Skeleton cls="h-[180px]" /><Skeleton cls="h-[180px]" />
+                </div>
+              ) : stats && (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-[12px] font-semibold text-white/50">Eisenhower matrix</span>
+                      {(stats.eisenhower["none"] ?? 0) > 0 && (
+                        <span className="text-[10px] text-white/20">+{stats.eisenhower["none"]} unscored</span>
+                      )}
+                    </div>
+                    <MatrixGrid cells={EIS_CELLS} data={stats.eisenhower} />
+                  </div>
+                  <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
+                    <div className="mb-3 flex items-center justify-between">
+                      <span className="text-[12px] font-semibold text-white/50">Impact × Effort</span>
+                      {(stats.impact_effort["none"] ?? 0) > 0 && (
+                        <span className="text-[10px] text-white/20">+{stats.impact_effort["none"]} unscored</span>
+                      )}
+                    </div>
+                    <MatrixGrid cells={IE_CELLS} data={stats.impact_effort} />
+                  </div>
+                </div>
+              )}
+              {/* Top priority */}
+              {stats && stats.top_tasks.length > 0 && (
+                <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-[12px] font-semibold text-white/50">Top priority</span>
+                    <Link href="/dashboard/tasks?mode=priority" className="text-[11px] text-accent/70 hover:text-accent transition">View all →</Link>
+                  </div>
+                  <ol className="space-y-2">
+                    {stats.top_tasks.map((t, i) => {
+                      const eiCls = t.eisenhower_quadrant ? EIS_CLS[t.eisenhower_quadrant] : null;
+                      const eiLabel = t.eisenhower_quadrant ? EIS_SHORT[t.eisenhower_quadrant] : null;
+                      return (
+                        <li key={t.id} className="flex items-center gap-3">
+                          <span className="w-4 shrink-0 text-center text-[11px] font-bold text-white/20">{i + 1}</span>
+                          <span className="min-w-0 flex-1 truncate text-[13px] text-white/80">{t.title}</span>
+                          {eiCls && eiLabel && (
+                            <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${eiCls}`}>{eiLabel}</span>
+                          )}
+                          <span className="shrink-0 text-[11px] tabular-nums text-white/20">{t.priority_score}</span>
+                        </li>
+                      );
+                    })}
+                  </ol>
+                </div>
+              )}
+            </div>
+
+            {/* Nav shortcuts */}
+            {!loading && (
+              <div className="grid grid-cols-2 gap-3">
+                <Link href="/dashboard/tasks"
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-accent/25 bg-accent/10 py-3 text-sm font-semibold text-accent transition hover:bg-accent/15">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Task Board
+                </Link>
+                <Link href="/dashboard/search"
+                  className="flex items-center justify-center gap-2 rounded-2xl border border-white/[0.09] bg-surface py-3 text-sm font-medium text-white/45 transition hover:border-white/[0.15] hover:text-white/70">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                    <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.75" />
+                    <path d="M20 20l-3-3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                  </svg>
+                  Search & Review
+                </Link>
+              </div>
+            )}
           </div>
 
-          {/* ── Quick capture ── */}
-          <form onSubmit={quickAdd} className="relative">
-            <input value={quickTitle} onChange={(e) => setQuickTitle(e.target.value)}
-              placeholder="Quick capture — what needs to happen?"
-              className="w-full rounded-2xl border border-white/[0.09] bg-surface px-4 py-3.5 pr-24 text-[15px] text-ink placeholder-white/20 outline-none transition focus:border-accent/50 focus:ring-1 focus:ring-accent/20" />
-            {quickTitle.trim() && (
-              <button type="submit" disabled={adding}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-xl bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent-dark disabled:opacity-50">
-                {adding ? "…" : "Add"}
-              </button>
-            )}
-          </form>
+          {/* ═══ RIGHT: stats + charts + matrices (xl+ only, sticky) ══════════ */}
+          <aside className="hidden xl:flex xl:flex-col xl:gap-4 xl:sticky xl:top-[49px] xl:self-start xl:max-h-[calc(100vh-49px)] xl:overflow-y-auto xl:pb-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
 
-          {/* ── Today section ── */}
-          <section>
-            <div className="mb-2.5 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-widest text-white/30">Today</span>
-                {dueRoutines.length > 0 && (
-                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                    doneRoutineCount === dueRoutines.length
-                      ? "bg-green-950/40 text-green-400"
-                      : "bg-accent/10 text-accent"
-                  }`}>
-                    {doneRoutineCount}/{dueRoutines.length} routines
-                  </span>
-                )}
-              </div>
-              <button type="button" onClick={() => setShowAddRoutine((v) => !v)}
-                className="flex items-center gap-1 text-[11px] text-white/30 transition hover:text-accent">
-                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
-                  <path d="M5.5 1v9M1 5.5h9" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
-                </svg>
-                Add routine
-              </button>
-            </div>
-
-            {showAddRoutine && (
-              <AddRoutineForm onAdd={addRoutine} onClose={() => setShowAddRoutine(false)} />
-            )}
-
+            {/* Stat cards */}
             {loading ? (
-              <div className="space-y-2">
-                {[...Array(3)].map((_, i) => <Skeleton key={i} cls="h-10" />)}
+              <div className="grid grid-cols-2 gap-2.5">
+                {[...Array(4)].map((_, i) => <Skeleton key={i} cls="h-[88px]" />)}
               </div>
-            ) : (dueRoutines.length === 0 && todayTasks.length === 0) ? (
-              <div className="rounded-xl border border-white/[0.07] bg-surface px-4 py-5 text-center">
-                <p className="text-sm text-white/30">Nothing captured today yet.</p>
-                <p className="mt-0.5 text-[11px] text-white/20">Quick-add above or use Brain Dump.</p>
+            ) : stats && (
+              <div className="grid grid-cols-2 gap-2.5">
+                {[
+                  { value: stats.active, label: "Active", href: "/dashboard/tasks", color: "text-accent" },
+                  { value: stats.completed_today, label: "Done today", href: "/dashboard/tasks", color: "text-green-400" },
+                  { value: stats.completed_week, label: "This week", href: "/dashboard/tasks", color: "text-emerald-400" },
+                  { value: stats.someday, label: "Someday", href: "/dashboard/search?filter=someday", color: "text-amber-400" },
+                ].map(({ value, label, href, color }) => (
+                  <Link key={label} href={href}
+                    className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-[#13131c] p-4 transition hover:border-white/[0.14]">
+                    <div className={`text-3xl font-bold tabular-nums leading-none ${color}`}>{value}</div>
+                    <div className="mt-2 text-[11px] font-medium text-white/40">{label}</div>
+                  </Link>
+                ))}
               </div>
-            ) : (
-              <ul className="space-y-1.5 relative">
-                {dueRoutines.map((r) => (
-                  <RoutineRow key={r.id} routine={r} onToggle={toggleRoutine} onDelete={deleteRoutine} />
-                ))}
-                {todayTasks.map((t) => (
-                  <TodayTaskRow key={t.id} task={t} onComplete={completeTask} />
-                ))}
-              </ul>
             )}
-          </section>
 
-          {/* ── Stat cards ── */}
-          {loading ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[...Array(4)].map((_, i) => <Skeleton key={i} cls="h-[100px]" />)}
-            </div>
-          ) : stats && (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {[
-                { value: stats.active, label: "Active", href: "/dashboard/tasks", color: "text-accent" },
-                { value: stats.completed_today, label: "Done today", href: "/dashboard/tasks", color: "text-green-400" },
-                { value: stats.completed_week, label: "This week", href: "/dashboard/tasks", color: "text-emerald-400" },
-                { value: stats.someday, label: "Someday", href: "/dashboard/search?filter=someday", color: "text-amber-400" },
-              ].map(({ value, label, href, color }) => (
-                <Link key={label} href={href}
-                  className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-surface p-4 transition hover:border-white/[0.14] hover:bg-surface-2">
-                  <div className={`text-3xl font-bold tabular-nums leading-none ${color}`}>{value}</div>
-                  <div className="mt-2 text-[11px] font-medium text-white/40">{label}</div>
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {/* ── Charts ── */}
-          {loading ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Skeleton cls="h-[150px]" /><Skeleton cls="h-[150px]" />
-            </div>
-          ) : stats && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
+            {/* 7-day chart */}
+            {loading ? <Skeleton cls="h-[130px]" /> : stats && (
+              <div className="rounded-2xl border border-white/[0.08] bg-[#13131c] p-4">
                 <div className="mb-3 flex items-center justify-between">
-                  <span className="text-[12px] font-semibold text-white/50">Completed last 7 days</span>
-                  <span className="text-[11px] text-white/25">{stats.daily_completions.reduce((s, d) => s + d.count, 0)} total</span>
+                  <span className="text-[12px] font-semibold text-white/50">Last 7 days</span>
+                  <span className="text-[11px] text-white/25">{stats.daily_completions.reduce((s, d) => s + d.count, 0)} done</span>
                 </div>
                 <BarChart data={stats.daily_completions} />
               </div>
-              <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
-                <div className="mb-3"><span className="text-[12px] font-semibold text-white/50">AI scoring coverage</span></div>
+            )}
+
+            {/* AI coverage */}
+            {loading ? <Skeleton cls="h-[110px]" /> : stats && (
+              <div className="rounded-2xl border border-white/[0.08] bg-[#13131c] p-4">
+                <div className="mb-3"><span className="text-[12px] font-semibold text-white/50">AI coverage</span></div>
                 <div className="flex items-center gap-4">
                   <RingChart value={stats.ai_scored} max={stats.active} />
                   <div className="flex-1 space-y-2.5">
@@ -520,83 +661,62 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ── 2×2 matrices ── */}
-          {loading ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Skeleton cls="h-[180px]" /><Skeleton cls="h-[180px]" />
-            </div>
-          ) : stats && (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-[12px] font-semibold text-white/50">Eisenhower matrix</span>
-                  {(stats.eisenhower["none"] ?? 0) > 0 && (
-                    <span className="text-[10px] text-white/20">+{stats.eisenhower["none"]} unscored</span>
-                  )}
+            {/* Matrices */}
+            {loading ? (
+              <div className="grid grid-cols-2 gap-2.5">
+                <Skeleton cls="h-[160px]" /><Skeleton cls="h-[160px]" />
+              </div>
+            ) : stats && (
+              <div className="grid grid-cols-2 gap-2.5">
+                <div className="rounded-2xl border border-white/[0.08] bg-[#13131c] p-3.5">
+                  <div className="mb-2.5 flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-white/40">Eisenhower</span>
+                    {(stats.eisenhower["none"] ?? 0) > 0 && (
+                      <span className="text-[9px] text-white/20">+{stats.eisenhower["none"]}</span>
+                    )}
+                  </div>
+                  <MatrixGrid cells={EIS_CELLS} data={stats.eisenhower} />
                 </div>
-                <MatrixGrid cells={EIS_CELLS} data={stats.eisenhower} />
-              </div>
-              <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
-                <div className="mb-3 flex items-center justify-between">
-                  <span className="text-[12px] font-semibold text-white/50">Impact × Effort</span>
-                  {(stats.impact_effort["none"] ?? 0) > 0 && (
-                    <span className="text-[10px] text-white/20">+{stats.impact_effort["none"]} unscored</span>
-                  )}
+                <div className="rounded-2xl border border-white/[0.08] bg-[#13131c] p-3.5">
+                  <div className="mb-2.5 flex items-center justify-between">
+                    <span className="text-[11px] font-semibold text-white/40">Impact×Effort</span>
+                    {(stats.impact_effort["none"] ?? 0) > 0 && (
+                      <span className="text-[9px] text-white/20">+{stats.impact_effort["none"]}</span>
+                    )}
+                  </div>
+                  <MatrixGrid cells={IE_CELLS} data={stats.impact_effort} />
                 </div>
-                <MatrixGrid cells={IE_CELLS} data={stats.impact_effort} />
               </div>
-            </div>
-          )}
+            )}
 
-          {/* ── Top priority ── */}
-          {!loading && stats && stats.top_tasks.length > 0 && (
-            <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <span className="text-[12px] font-semibold text-white/50">Top priority</span>
-                <Link href="/dashboard/tasks?mode=priority" className="text-[11px] text-accent/70 hover:text-accent transition">View all →</Link>
+            {/* Top priority */}
+            {!loading && stats && stats.top_tasks.length > 0 && (
+              <div className="rounded-2xl border border-white/[0.08] bg-[#13131c] p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-[12px] font-semibold text-white/50">Top priority</span>
+                  <Link href="/dashboard/tasks?mode=priority" className="text-[11px] text-accent/70 hover:text-accent transition">View all →</Link>
+                </div>
+                <ol className="space-y-2">
+                  {stats.top_tasks.map((t, i) => {
+                    const eiCls = t.eisenhower_quadrant ? EIS_CLS[t.eisenhower_quadrant] : null;
+                    const eiLabel = t.eisenhower_quadrant ? EIS_SHORT[t.eisenhower_quadrant] : null;
+                    return (
+                      <li key={t.id} className="flex items-center gap-3">
+                        <span className="w-4 shrink-0 text-center text-[11px] font-bold text-white/20">{i + 1}</span>
+                        <span className="min-w-0 flex-1 truncate text-[13px] text-white/80">{t.title}</span>
+                        {eiCls && eiLabel && (
+                          <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${eiCls}`}>{eiLabel}</span>
+                        )}
+                        <span className="shrink-0 text-[11px] tabular-nums text-white/20">{t.priority_score}</span>
+                      </li>
+                    );
+                  })}
+                </ol>
               </div>
-              <ol className="space-y-2">
-                {stats.top_tasks.map((t, i) => {
-                  const eiCls = t.eisenhower_quadrant ? EIS_CLS[t.eisenhower_quadrant] : null;
-                  const eiLabel = t.eisenhower_quadrant ? EIS_SHORT[t.eisenhower_quadrant] : null;
-                  return (
-                    <li key={t.id} className="flex items-center gap-3">
-                      <span className="w-4 shrink-0 text-center text-[11px] font-bold text-white/20">{i + 1}</span>
-                      <span className="min-w-0 flex-1 truncate text-[13px] text-white/80">{t.title}</span>
-                      {eiCls && eiLabel && (
-                        <span className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] font-medium ${eiCls}`}>{eiLabel}</span>
-                      )}
-                      <span className="shrink-0 text-[11px] tabular-nums text-white/20">{t.priority_score}</span>
-                    </li>
-                  );
-                })}
-              </ol>
-            </div>
-          )}
-
-          {/* ── Bottom nav shortcuts ── */}
-          {!loading && (
-            <div className="grid grid-cols-2 gap-3">
-              <Link href="/dashboard/tasks"
-                className="flex items-center justify-center gap-2 rounded-2xl border border-accent/25 bg-accent/8 py-3 text-sm font-semibold text-accent transition hover:bg-accent/15">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                Task Board
-              </Link>
-              <Link href="/dashboard/search"
-                className="flex items-center justify-center gap-2 rounded-2xl border border-white/[0.09] bg-surface py-3 text-sm font-medium text-white/45 transition hover:border-white/[0.15] hover:text-white/70">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                  <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.75" />
-                  <path d="M20 20l-3-3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
-                </svg>
-                Search & Review
-              </Link>
-            </div>
-          )}
+            )}
+          </aside>
         </main>
       </div>
     </>

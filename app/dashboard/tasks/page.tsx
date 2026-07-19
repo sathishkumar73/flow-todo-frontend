@@ -130,7 +130,7 @@ function EmptyState({ onAdd, onDump }: { onAdd: (t: string) => void; onDump: () 
 }
 
 export default function DashboardPage() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
   const api = useMemo(() => createApi(() => getToken()), [getToken]);
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -150,7 +150,9 @@ export default function DashboardPage() {
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
   );
 
-  useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // Wait for Clerk to restore the session before fetching — on client navigation
+  // getToken() returns null until isLoaded, which causes a 401 and shows empty state
+  useEffect(() => { if (isLoaded) fetchAll(); }, [isLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function fetchAll() {
     setLoading(true);

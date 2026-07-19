@@ -122,7 +122,7 @@ function RoutineCard({
 }
 
 export default function RoutinesPage() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
   const api = useMemo(() => createApi(() => getToken()), [getToken]);
 
   const [routines, setRoutines] = useState<Routine[]>([]);
@@ -132,10 +132,11 @@ export default function RoutinesPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    if (!isLoaded) return;
     api.get<{ routines: Routine[] }>("/api/v1/routines")
       .then((d) => setRoutines(d.routines ?? []))
       .finally(() => setLoading(false));
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isLoaded]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dueToday = useMemo(() => routines.filter((r) => r.is_due_today), [routines]);
   const doneCount = useMemo(() => dueToday.filter((r) => r.is_done_today).length, [dueToday]);

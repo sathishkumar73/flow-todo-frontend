@@ -143,7 +143,7 @@ function HistoryDay({ day }: { day: DumpDay }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function TodayPage() {
-  const { getToken } = useAuth();
+  const { getToken, isLoaded } = useAuth();
   const api = createApi(getToken);
 
   const [view, setView] = useState<"today" | "history">("today");
@@ -183,10 +183,11 @@ export default function TodayPage() {
   }
 
   useEffect(() => {
+    if (!isLoaded) return;
     load();
     loadHistory();
     inputRef.current?.focus();
-  }, []); // eslint-disable-line
+  }, [isLoaded]); // eslint-disable-line
 
   function switchView(v: "today" | "history") {
     setView(v);

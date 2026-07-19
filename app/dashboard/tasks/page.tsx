@@ -22,7 +22,7 @@ import InsightsBanner from "../../components/InsightsBanner";
 import RetroPanel from "../../components/RetroPanel";
 import BrainDump from "../../components/BrainDump";
 
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 10;
 type SortMode = "stack" | "priority";
 
 function sortTasks(tasks: Task[], mode: SortMode): Task[] {
@@ -143,6 +143,7 @@ export default function DashboardPage() {
   const [sharpening, setSharpening] = useState(false);
   const [staleTasks, setStaleTasks] = useState<Task[]>([]);
   const [showDump, setShowDump] = useState(false);
+  const [streak, setStreak] = useState(0);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -154,14 +155,16 @@ export default function DashboardPage() {
   async function fetchAll() {
     setLoading(true);
     try {
-      const [taskData, completedData, triageData] = await Promise.allSettled([
+      const [taskData, completedData, triageData, streakData] = await Promise.allSettled([
         api.get<{ tasks: Task[] }>("/api/v1/tasks"),
         api.get<{ tasks: Task[] }>("/api/v1/tasks/completed"),
         api.get<{ tasks: Task[] }>("/api/v1/tasks/triage"),
+        api.get<{ streak: number }>("/api/v1/tasks/streak"),
       ]);
       if (taskData.status === "fulfilled") setTasks(taskData.value.tasks ?? []);
       if (completedData.status === "fulfilled") setCompletedToday(completedData.value.tasks ?? []);
       if (triageData.status === "fulfilled") setStaleTasks(triageData.value.tasks ?? []);
+      if (streakData.status === "fulfilled") setStreak(streakData.value.streak ?? 0);
     } finally {
       setLoading(false);
     }
@@ -221,6 +224,7 @@ export default function DashboardPage() {
     setCompletedToday((prev) => [{ ...task, status: "done", completed_at: now }, ...prev]);
     try {
       await api.patch(`/api/v1/tasks/${id}`, { status: "done" });
+      api.get<{ streak: number }>("/api/v1/tasks/streak").then((r) => setStreak(r.streak ?? 0)).catch(() => {});
     } catch {
       setTasks((prev) => [...prev, task]);
       setCompletedToday((prev) => prev.filter((t) => t.id !== id));
@@ -314,9 +318,14 @@ export default function DashboardPage() {
           {!loading && (
             <div className="mb-5 grid grid-cols-4 gap-2">
               <StatCard value={activeTasks.length} label="Active" accent="text-accent" />
-              <StatCard value={totalPages} label="Pages" />
               <StatCard value={completedToday.length} label="Done today" accent="text-green-400" />
-              <StatCard value={safePage} label="Page" />
+              <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-white/[0.09] bg-surface px-2 py-3">
+                <span className="text-2xl font-bold tabular-nums leading-none text-orange-400">
+                  {streak > 0 ? `${streak}🔥` : "—"}
+                </span>
+                <span className="mt-1 text-[10px] font-medium uppercase tracking-widest text-white/30">Streak</span>
+              </div>
+              <StatCard value={safePage} label={`of ${totalPages}`} />
             </div>
           )}
 

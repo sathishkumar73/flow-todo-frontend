@@ -22,6 +22,8 @@ export default function TodayPage() {
   const [input, setInput] = useState("");
   const [adding, setAdding] = useState(false);
 
+  const [streak, setStreak] = useState(0);
+
   const [showPicker, setShowPicker] = useState(false);
   const [allTasks, setAllTasks] = useState<Task[]>([]);
   const [pickerSearch, setPickerSearch] = useState("");
@@ -33,8 +35,12 @@ export default function TodayPage() {
   async function load() {
     setLoading(true);
     try {
-      const res = await api.get<{ tasks: Task[] }>("/api/v1/tasks/today");
-      setTasks(res.tasks);
+      const [todayRes, streakRes] = await Promise.allSettled([
+        api.get<{ tasks: Task[] }>("/api/v1/tasks/today"),
+        api.get<{ streak: number }>("/api/v1/tasks/streak"),
+      ]);
+      if (todayRes.status === "fulfilled") setTasks(todayRes.value.tasks);
+      if (streakRes.status === "fulfilled") setStreak(streakRes.value.streak ?? 0);
     } finally {
       setLoading(false);
     }
@@ -90,6 +96,8 @@ export default function TodayPage() {
     setTasks((prev) => prev.filter((t) => t.id !== id));
     try {
       await api.patch(`/api/v1/tasks/${id}`, { status: "done" });
+      // refresh streak since a completion may start or extend it
+      api.get<{ streak: number }>("/api/v1/tasks/streak").then((r) => setStreak(r.streak ?? 0)).catch(() => {});
     } catch {
       await load();
     }
@@ -167,9 +175,20 @@ export default function TodayPage() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-xl font-semibold text-ink">Today&apos;s Dump</h1>
-        <p className="text-sm text-ink-2 mt-0.5">{todayLabel()}</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-ink">Today&apos;s Dump</h1>
+          <p className="text-sm text-ink-2 mt-0.5">{todayLabel()}</p>
+        </div>
+        {streak > 0 && (
+          <div className="flex items-center gap-1.5 rounded-xl border border-orange-500/20 bg-orange-500/10 px-3 py-2">
+            <span className="text-lg leading-none">🔥</span>
+            <div className="text-right">
+              <p className="text-base font-bold leading-none text-orange-400">{streak}</p>
+              <p className="text-[10px] text-orange-400/60 mt-0.5">day streak</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Quick add */}

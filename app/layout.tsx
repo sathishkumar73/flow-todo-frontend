@@ -1,4 +1,5 @@
 import { ClerkProvider } from "@clerk/nextjs";
+import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
@@ -134,7 +135,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <link rel="preconnect" href="https://cdn.flowtodo.app" crossOrigin="anonymous" />
           <link rel="alternate" type="application/rss+xml" title="Flow Todo Blog" href="https://flowtodo.app/blog/feed.xml" />
         </head>
-        <body className="min-h-screen antialiased">{children}</body>
+        <body className="min-h-screen antialiased">
+          {children}
+          <Analytics />
+        </body>
       </html>
     </ClerkProvider>
   );

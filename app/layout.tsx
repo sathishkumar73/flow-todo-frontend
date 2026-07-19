@@ -5,9 +5,16 @@ import "./globals.css";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Flow Todo",
-  description: "A minimal, single-user todo app that only ever shows your top 10 tasks.",
+  title: "Flow Todo — Focus on your top 10 tasks",
+  description: "A minimal, single-user todo app that only ever shows your top 10 tasks. AI-powered priority scoring with Eisenhower and Impact/Effort matrices.",
   manifest: "/manifest.json",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" },
+    ],
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",

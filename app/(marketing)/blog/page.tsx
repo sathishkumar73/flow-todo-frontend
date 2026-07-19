@@ -42,7 +42,7 @@ export default async function BlogPage({
   const currentPage = Math.max(1, parseInt(page))
 
   const [postsResult, categories] = await Promise.all([
-    getBlogPosts({ page: currentPage, category, search, limit: 9 }).catch(() => ({
+    getBlogPosts({ page: currentPage, category, search, limit: 6 }).catch(() => ({
       posts: [] as import('@/lib/blog').BlogPost[],
       totalPages: 0,
       totalPosts: 0,

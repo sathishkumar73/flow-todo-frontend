@@ -37,7 +37,7 @@ export default async function CategoryPage({ params, searchParams }: Props) {
   const currentPage = Math.max(1, parseInt(page))
   const name = category.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 
-  const { posts, totalPages, totalPosts } = await getBlogPosts({ page: currentPage, category, limit: 9 }).catch(() => ({ posts: [], totalPages: 0, totalPosts: 0 }))
+  const { posts, totalPages, totalPosts } = await getBlogPosts({ page: currentPage, category, limit: 6 }).catch(() => ({ posts: [], totalPages: 0, totalPosts: 0 }))
 
   const border = 'rgba(255,255,255,0.07)'
   const ink = '#E8E8F0'

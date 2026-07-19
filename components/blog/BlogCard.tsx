@@ -62,17 +62,6 @@ export default function BlogCard({ post }: BlogCardProps) {
           {post.excerpt}
         </p>
 
-        {post.tags && post.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 mb-4">
-            {post.tags.slice(0, 3).map(tag => (
-              <span key={tag} className="px-2 py-0.5 rounded text-xs"
-                style={{ background: 'rgba(37,99,235,0.1)', color: '#93C5FD' }}>
-                #{tag}
-              </span>
-            ))}
-          </div>
-        )}
-
         <span className="inline-flex items-center gap-1 text-sm font-semibold transition-colors"
           style={{ color: '#60A5FA' }}>
           Read more

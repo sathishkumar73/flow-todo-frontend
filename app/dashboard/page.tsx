@@ -1,469 +1,455 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
-import { useAuth } from "@clerk/nextjs";
-import {
-  DndContext,
-  DragEndEvent,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  closestCenter,
-} from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
-import type { Task } from "@/lib/types";
-import { EisenhowerQuadrant, ImpactEffortQuadrant } from "@/lib/scoring";
+import { useEffect, useMemo, useState } from "react";
+import { useAuth, useUser } from "@clerk/nextjs";
+import Link from "next/link";
 import { createApi } from "@/lib/api";
-import TaskRow from "../components/TaskRow";
-import BriefingCard from "../components/BriefingCard";
-import TriagePanel from "../components/TriagePanel";
-import InsightsBanner from "../components/InsightsBanner";
-import RetroPanel from "../components/RetroPanel";
-import BrainDump from "../components/BrainDump";
 
-const PAGE_SIZE = 6;
-type SortMode = "stack" | "priority";
-
-function sortTasks(tasks: Task[], mode: SortMode): Task[] {
-  if (mode === "stack") {
-    return [...tasks].sort((a, b) => b.stack_position - a.stack_position);
-  }
-  return [...tasks].sort((a, b) => {
-    const pa = a.effective_priority ?? a.priority_score;
-    const pb = b.effective_priority ?? b.priority_score;
-    if (pb !== pa) return pb - pa;
-    return b.stack_position - a.stack_position;
-  });
+interface DashboardStats {
+  active: number;
+  completed_today: number;
+  completed_week: number;
+  someday: number;
+  ai_scored: number;
+  eisenhower: Record<string, number>;
+  impact_effort: Record<string, number>;
+  daily_completions: { date: string; count: number }[];
+  top_tasks: {
+    id: number;
+    title: string;
+    priority_score: number;
+    eisenhower_quadrant: string | null;
+    impact_effort_quadrant: string | null;
+  }[];
 }
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60_000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const DAY_CHARS = ["S", "M", "T", "W", "T", "F", "S"];
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 17) return "Good afternoon";
+  if (h < 21) return "Good evening";
+  return "Hey";
 }
 
-function StatCard({ value, label, accent }: { value: number; label: string; accent?: string }) {
+// ── Bar Chart ──────────────────────────────────────────────────────────────
+function BarChart({ data }: { data: { date: string; count: number }[] }) {
+  const max = Math.max(...data.map((d) => d.count), 1);
   return (
-    <div className="flex flex-1 flex-col items-center justify-center rounded-2xl border border-white/[0.09] bg-surface px-2 py-3">
-      <span className={`text-2xl font-bold tabular-nums leading-none ${accent ?? "text-ink"}`}>{value}</span>
-      <span className="mt-1 text-[10px] font-medium uppercase tracking-widest text-white/30">{label}</span>
-    </div>
-  );
-}
-
-function CompletedRow({ task }: { task: Task }) {
-  return (
-    <li className="flex items-center gap-3 py-2.5">
-      <div className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-green-950/50 border border-green-800/40">
-        <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-          <path d="M2 5l2.5 2.5L8 3" stroke="#4ade80" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
-      <span className="min-w-0 flex-1 truncate text-sm text-white/30 line-through decoration-white/20">{task.title}</span>
-      {task.completed_at && (
-        <span className="shrink-0 text-[11px] text-white/20">{timeAgo(task.completed_at)}</span>
-      )}
-    </li>
-  );
-}
-
-const FEATURES = [
-  { icon: "🎯", label: "AI Priority",    desc: "Every task scored on creation" },
-  { icon: "✦",  label: "AI Sharpen",    desc: "Turn vague ideas into actions" },
-  { icon: "☀️", label: "Briefing",      desc: "Morning focus summary" },
-  { icon: "🧠", label: "Brain Dump",    desc: "Capture everything at once" },
-];
-const EXAMPLES = [
-  "Write intro email to first customer",
-  "Fix the login bug on mobile",
-  "Review Q3 metrics and take notes",
-];
-
-function EmptyState({ onAdd, onDump }: { onAdd: (t: string) => void; onDump: () => void }) {
-  return (
-    <div className="mt-10 animate-fade-in text-center">
-      <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-accent/10 border border-accent/20">
-        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" className="text-accent">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      </div>
-      <h2 className="text-lg font-semibold text-ink">Your board is clear</h2>
-      <p className="mx-auto mt-2 max-w-[280px] text-sm text-white/35">
-        Add tasks above or use Brain Dump to capture everything at once — AI scores them automatically.
-      </p>
-      <div className="mx-auto mt-5 grid max-w-[300px] grid-cols-2 gap-2 text-left">
-        {FEATURES.map((f) => (
-          <div key={f.label} className="rounded-xl border border-white/[0.09] bg-surface p-3">
-            <div className="mb-1 text-sm">{f.icon}</div>
-            <div className="text-[12px] font-semibold text-white/60">{f.label}</div>
-            <div className="text-[10px] leading-tight text-white/25">{f.desc}</div>
+    <div className="flex h-[88px] items-end gap-1.5">
+      {data.map((d, i) => {
+        const barH = Math.round((d.count / max) * 60);
+        const isToday = i === data.length - 1;
+        const dayChar = DAY_CHARS[new Date(d.date + "T12:00:00").getDay()];
+        return (
+          <div key={d.date} className="flex flex-1 flex-col items-center gap-1">
+            {d.count > 0 && (
+              <span className="text-[9px] font-medium tabular-nums text-white/30">{d.count}</span>
+            )}
+            {d.count === 0 && <span className="text-[9px]">&nbsp;</span>}
+            <div className="flex w-full flex-col justify-end" style={{ height: 60 }}>
+              <div
+                className={`w-full rounded-t-md transition-all ${
+                  isToday
+                    ? "bg-accent"
+                    : d.count > 0
+                    ? "bg-white/20"
+                    : "bg-white/[0.05]"
+                }`}
+                style={{ height: Math.max(barH, d.count > 0 ? 4 : 2) }}
+              />
+            </div>
+            <span
+              className={`text-[9px] font-medium ${
+                isToday ? "text-accent" : "text-white/25"
+              }`}
+            >
+              {dayChar}
+            </span>
           </div>
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={onDump}
-        className="mt-5 w-full max-w-[300px] rounded-xl border border-accent/30 bg-accent/10 py-3 text-sm font-semibold text-accent transition hover:bg-accent/20"
-      >
-        🧠 Brain Dump everything now
-      </button>
-      <div className="mt-4 space-y-2 max-w-[300px] mx-auto">
-        <p className="text-[10px] uppercase tracking-widest text-white/20">Or try an example</p>
-        {EXAMPLES.map((ex) => (
-          <button
-            key={ex}
-            type="button"
-            onClick={() => onAdd(ex)}
-            className="block w-full rounded-xl border border-white/[0.09] bg-surface px-4 py-2.5 text-left text-sm text-white/35 transition hover:border-accent/30 hover:text-white/60"
-          >
-            {ex}
-          </button>
-        ))}
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Ring Chart ─────────────────────────────────────────────────────────────
+function RingChart({ value, max }: { value: number; max: number }) {
+  const r = 34;
+  const circ = 2 * Math.PI * r;
+  const ratio = max > 0 ? Math.min(value / max, 1) : 0;
+  const pct = Math.round(ratio * 100);
+  const offset = circ * (1 - ratio);
+
+  return (
+    <div className="relative flex h-[88px] w-[88px] items-center justify-center">
+      <svg width="88" height="88" viewBox="0 0 88 88" className="-rotate-90">
+        <circle cx="44" cy="44" r={r} fill="none" stroke="rgba(255,255,255,0.07)" strokeWidth="9" />
+        <circle
+          cx="44"
+          cy="44"
+          r={r}
+          fill="none"
+          stroke="#2563eb"
+          strokeWidth="9"
+          strokeLinecap="round"
+          strokeDasharray={circ}
+          strokeDashoffset={offset}
+          className="transition-all duration-700"
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-lg font-bold tabular-nums text-ink leading-none">{pct}%</span>
+        <span className="text-[9px] text-white/30 leading-none mt-0.5">scored</span>
       </div>
     </div>
   );
 }
 
-export default function DashboardPage() {
+// ── 2×2 Matrix Grid ────────────────────────────────────────────────────────
+interface MatrixCell {
+  key: string;
+  label: string;
+  sublabel: string;
+  bg: string;
+  border: string;
+  count_cls: string;
+}
+
+const EIS_CELLS: MatrixCell[] = [
+  { key: "do_first",  label: "Do First",  sublabel: "Urgent + Important",     bg: "bg-red-950/40",    border: "border-red-800/25",    count_cls: "text-red-400" },
+  { key: "schedule",  label: "Schedule",  sublabel: "Not urgent + Important",  bg: "bg-blue-950/40",   border: "border-blue-800/25",   count_cls: "text-blue-400" },
+  { key: "delegate",  label: "Delegate",  sublabel: "Urgent + Not important",  bg: "bg-amber-950/40",  border: "border-amber-800/25",  count_cls: "text-amber-400" },
+  { key: "eliminate", label: "Eliminate", sublabel: "Neither urgent nor imp.",  bg: "bg-surface",       border: "border-white/[0.08]",  count_cls: "text-white/35" },
+];
+
+const IE_CELLS: MatrixCell[] = [
+  { key: "quick_win",     label: "Quick Win",     sublabel: "High impact, low effort",  bg: "bg-green-950/40",  border: "border-green-800/25",  count_cls: "text-green-400" },
+  { key: "major_project", label: "Big Bet",       sublabel: "High impact, high effort", bg: "bg-purple-950/40", border: "border-purple-800/25", count_cls: "text-purple-400" },
+  { key: "fill_in",       label: "Fill-in",       sublabel: "Low impact, low effort",   bg: "bg-surface",       border: "border-white/[0.08]",  count_cls: "text-white/35" },
+  { key: "thankless",     label: "Thankless",     sublabel: "Low impact, high effort",  bg: "bg-red-950/20",    border: "border-red-900/20",    count_cls: "text-red-500/60" },
+];
+
+function MatrixGrid({ cells, data }: { cells: MatrixCell[]; data: Record<string, number> }) {
+  return (
+    <div className="grid grid-cols-2 gap-1.5">
+      {cells.map((c) => {
+        const n = data[c.key] ?? 0;
+        return (
+          <div key={c.key} className={`rounded-xl border ${c.bg} ${c.border} px-3 py-2.5`}>
+            <div className={`text-xl font-bold tabular-nums leading-none ${c.count_cls}`}>{n}</div>
+            <div className="mt-1 text-[11px] font-medium text-white/60 leading-none">{c.label}</div>
+            <div className="mt-0.5 text-[9px] text-white/25 leading-snug">{c.sublabel}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── Stat Card ──────────────────────────────────────────────────────────────
+function StatCard({
+  value,
+  label,
+  sub,
+  accent,
+  icon,
+}: {
+  value: number;
+  label: string;
+  sub?: string;
+  accent?: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col justify-between rounded-2xl border border-white/[0.08] bg-surface p-4">
+      <div className="flex items-start justify-between">
+        <div className={`flex h-8 w-8 items-center justify-center rounded-xl ${accent ? `bg-[${accent}]/10` : "bg-white/5"}`}>
+          {icon}
+        </div>
+      </div>
+      <div className="mt-4">
+        <div className="text-3xl font-bold tabular-nums leading-none text-ink">{value}</div>
+        <div className="mt-1 text-[12px] font-medium text-white/45">{label}</div>
+        {sub && <div className="mt-0.5 text-[10px] text-white/20">{sub}</div>}
+      </div>
+    </div>
+  );
+}
+
+// ── EIS badge inline ───────────────────────────────────────────────────────
+const EIS_CLS: Record<string, string> = {
+  do_first:  "bg-red-950/60 text-red-400 border-red-800/40",
+  schedule:  "bg-blue-950/60 text-blue-400 border-blue-800/40",
+  delegate:  "bg-amber-950/60 text-amber-400 border-amber-800/40",
+  eliminate: "bg-white/5 text-white/30 border-white/10",
+};
+const EIS_SHORT: Record<string, string> = {
+  do_first: "Do First", schedule: "Schedule", delegate: "Delegate", eliminate: "Eliminate",
+};
+
+// ── Skeleton ───────────────────────────────────────────────────────────────
+function Skeleton({ cls }: { cls: string }) {
+  return <div className={`animate-pulse rounded-xl bg-white/[0.05] ${cls}`} />;
+}
+
+// ── Main component ─────────────────────────────────────────────────────────
+export default function HomePage() {
   const { getToken } = useAuth();
+  const { user } = useUser();
   const api = useMemo(() => createApi(() => getToken()), [getToken]);
 
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [completedToday, setCompletedToday] = useState<Task[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState<SortMode>("stack");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [title, setTitle] = useState("");
-  const [completedOpen, setCompletedOpen] = useState(false);
-  const [sharpening, setSharpening] = useState(false);
-  const [staleTasks, setStaleTasks] = useState<Task[]>([]);
-  const [showDump, setShowDump] = useState(false);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
-  );
-
-  useEffect(() => { fetchAll(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function fetchAll() {
-    setLoading(true);
-    try {
-      const [taskData, completedData, triageData] = await Promise.allSettled([
-        api.get<{ tasks: Task[] }>("/api/v1/tasks"),
-        api.get<{ tasks: Task[] }>("/api/v1/tasks/completed"),
-        api.get<{ tasks: Task[] }>("/api/v1/tasks/triage"),
-      ]);
-      if (taskData.status === "fulfilled") setTasks(taskData.value.tasks ?? []);
-      if (completedData.status === "fulfilled") setCompletedToday(completedData.value.tasks ?? []);
-      if (triageData.status === "fulfilled") setStaleTasks(triageData.value.tasks ?? []);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const activeTasks = useMemo(() => tasks.filter((t) => t.status === "active"), [tasks]);
-  const sorted = useMemo(() => sortTasks(activeTasks, mode), [activeTasks, mode]);
-  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
-  const safePage = Math.min(currentPage, totalPages);
-  const pageTasks = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-  const isDragMode = mode === "stack";
-
-  useEffect(() => { setCurrentPage(1); }, [mode]);
   useEffect(() => {
-    if (currentPage > totalPages) setCurrentPage(totalPages);
-  }, [totalPages, currentPage]);
+    api.get<DashboardStats>("/api/v1/tasks/stats")
+      .then(setStats)
+      .finally(() => setLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function submitTask(taskTitle: string) {
-    const trimmed = taskTitle.trim();
-    if (!trimmed) return;
-    setTitle("");
-    try {
-      const data = await api.post<{ task: Task }>("/api/v1/tasks", { title: trimmed });
-      if (data.task) setTasks((prev) => [data.task, ...prev]);
-    } catch {}
-  }
-
-  async function addTask(e: React.FormEvent) {
-    e.preventDefault();
-    await submitTask(title);
-  }
-
-  async function sharpenTitle() {
-    const trimmed = title.trim();
-    if (!trimmed || sharpening) return;
-    setSharpening(true);
-    try {
-      const data = await api.post<{ suggestion: string }>("/api/v1/tasks/sharpen", { title: trimmed });
-      if (data.suggestion) setTitle(data.suggestion);
-    } catch {
-    } finally {
-      setSharpening(false);
-    }
-  }
-
-  async function bulkAddTasks(titles: string[]): Promise<number> {
-    const data = await api.post<{ tasks: Task[]; count: number }>("/api/v1/tasks/bulk", { titles });
-    if (data.tasks?.length) setTasks((prev) => [...data.tasks, ...prev]);
-    return data.count ?? titles.length;
-  }
-
-  async function completeTask(id: number) {
-    const task = tasks.find((t) => t.id === id);
-    if (!task) return;
-    setTasks((prev) => prev.filter((t) => t.id !== id));
-    const now = new Date().toISOString();
-    setCompletedToday((prev) => [{ ...task, status: "done", completed_at: now }, ...prev]);
-    try {
-      await api.patch(`/api/v1/tasks/${id}`, { status: "done" });
-    } catch {
-      setTasks((prev) => [...prev, task]);
-      setCompletedToday((prev) => prev.filter((t) => t.id !== id));
-    }
-  }
-
-  async function updateMatrix(
-    id: number,
-    updates: { eisenhower_quadrant?: EisenhowerQuadrant | null; impact_effort_quadrant?: ImpactEffortQuadrant | null }
-  ) {
-    const data = await api.patch<{ task: Task }>(`/api/v1/tasks/${id}`, updates);
-    if (data.task) setTasks((prev) => prev.map((t) => (t.id === id ? data.task : t)));
-  }
-
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
-      setTasks((prev) => {
-        const ai = prev.findIndex((t) => t.id === active.id);
-        const oi = prev.findIndex((t) => t.id === over.id);
-        if (ai === -1 || oi === -1) return prev;
-        const reordered = arrayMove(prev, ai, oi);
-        api.post("/api/v1/tasks/reorder", { ordered_ids: reordered.map((t) => t.id) }).catch(() => {});
-        return reordered;
-      });
-    },
-    [api]
-  );
+  const firstName = user?.firstName ?? "";
 
   return (
-    <>
-      {showDump && (
-        <BrainDump
-          onSubmit={bulkAddTasks}
-          onClose={() => { setShowDump(false); fetchAll(); }}
-        />
-      )}
+    <div className="flex flex-col min-h-screen">
+      {/* Header */}
+      <header className="sticky top-0 z-30 border-b border-white/[0.08] bg-[#0f0f14]/92 backdrop-blur-sm">
+        <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex items-center gap-2 lg:hidden">
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-purple-600">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="text-white">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </div>
+            <span className="text-[15px] font-semibold text-ink">Flow Todo</span>
+          </div>
+          <span className="hidden lg:block text-sm font-semibold text-white/30">Overview</span>
+          <Link
+            href="/dashboard/tasks"
+            className="flex items-center gap-1.5 rounded-xl border border-white/[0.09] bg-surface px-3 py-1.5 text-xs font-medium text-white/50 transition hover:border-accent/30 hover:text-accent"
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+              <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Open Tasks
+          </Link>
+        </div>
+      </header>
 
-      <div className="flex flex-col min-h-screen">
-        {/* Page header — logo visible on mobile (sidebar hidden), controls visible always */}
-        <header className="sticky top-0 z-30 border-b border-white/[0.09] bg-[#0f0f14]/92 backdrop-blur-sm">
-          <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
-            {/* Mobile: logo; Desktop: page title */}
-            <div className="flex items-center gap-2 lg:hidden">
-              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-purple-600">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" className="text-white">
+      <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6 space-y-5">
+        {/* Greeting */}
+        <div>
+          <h1 className="text-xl font-bold text-ink">
+            {greeting()}{firstName ? `, ${firstName}` : ""} 👋
+          </h1>
+          <p className="text-sm text-white/35">
+            {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+          </p>
+        </div>
+
+        {/* ── Stat cards ── */}
+        {loading ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {[...Array(4)].map((_, i) => <Skeleton key={i} cls="h-[110px]" />)}
+          </div>
+        ) : stats && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <StatCard
+              value={stats.active}
+              label="Active tasks"
+              accent="#2563eb"
+              icon={
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-accent">
                   <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-              </div>
-              <span className="text-[15px] font-semibold text-ink">Flow Todo</span>
-            </div>
-            <span className="hidden lg:block text-sm font-semibold text-white/30">Tasks</span>
-
-            <div className="flex items-center gap-2">
-              {/* Brain Dump button */}
-              <button
-                type="button"
-                onClick={() => setShowDump(true)}
-                className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-surface px-3 py-1.5 text-xs font-medium text-white/50 transition hover:border-accent/30 hover:text-accent"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 2C8 2 5 5 5 9c0 2.4 1.1 4.5 2.8 5.9L8 18h8l.2-3.1C17.9 13.5 19 11.4 19 9c0-4-3-7-7-7z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-                  <path d="M9 21h6M10 18v3M14 18v3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+              }
+            />
+            <StatCard
+              value={stats.completed_today}
+              label="Done today"
+              icon={
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-green-400">
+                  <path d="M20 6L9 17l-5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                Brain Dump
-              </button>
+              }
+            />
+            <StatCard
+              value={stats.completed_week}
+              label="Done this week"
+              icon={
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-emerald-400">
+                  <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.75" />
+                  <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+                </svg>
+              }
+            />
+            <StatCard
+              value={stats.someday}
+              label="Someday"
+              icon={
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" className="text-amber-400">
+                  <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="1.75" />
+                  <path d="M12 7v5l3 3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              }
+            />
+          </div>
+        )}
 
-              {/* Sort toggle */}
-              <div className="flex items-center rounded-full border border-white/10 bg-surface p-0.5">
-                {(["stack", "priority"] as SortMode[]).map((m) => (
-                  <button
-                    key={m}
-                    type="button"
-                    onClick={() => setMode(m)}
-                    className={`rounded-full px-3 py-1 text-xs font-medium capitalize transition-all ${
-                      mode === m ? "bg-accent text-white" : "text-white/40 hover:text-white/60"
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
+        {/* ── Bar chart + AI ring ── */}
+        {loading ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Skeleton cls="h-[160px]" />
+            <Skeleton cls="h-[160px]" />
+          </div>
+        ) : stats && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {/* 7-day completions */}
+            <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-[12px] font-semibold text-white/50">Completed last 7 days</span>
+                <span className="text-[11px] text-white/25">{stats.daily_completions.reduce((s, d) => s + d.count, 0)} total</span>
+              </div>
+              <BarChart data={stats.daily_completions} />
+            </div>
+
+            {/* AI coverage */}
+            <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
+              <div className="mb-3">
+                <span className="text-[12px] font-semibold text-white/50">AI scoring coverage</span>
+              </div>
+              <div className="flex items-center gap-5">
+                <RingChart value={stats.ai_scored} max={stats.active} />
+                <div className="flex-1 space-y-2">
+                  <div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-white/40">Scored</span>
+                      <span className="font-medium text-ink">{stats.ai_scored}</span>
+                    </div>
+                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.07]">
+                      <div
+                        className="h-full rounded-full bg-accent transition-all duration-700"
+                        style={{ width: stats.active > 0 ? `${(stats.ai_scored / stats.active) * 100}%` : "0%" }}
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-white/40">Unscored</span>
+                      <span className="font-medium text-white/50">{stats.active - stats.ai_scored}</span>
+                    </div>
+                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-white/[0.07]">
+                      <div
+                        className="h-full rounded-full bg-white/20 transition-all duration-700"
+                        style={{ width: stats.active > 0 ? `${((stats.active - stats.ai_scored) / stats.active) * 100}%` : "0%" }}
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        </header>
+        )}
 
-        <main className="flex-1 px-4 py-5 sm:px-6 sm:py-6">
-
-          {/* Stats */}
-          {!loading && (
-            <div className="mb-5 grid grid-cols-4 gap-2">
-              <StatCard value={activeTasks.length} label="Active" accent="text-accent" />
-              <StatCard value={totalPages} label="Pages" />
-              <StatCard value={completedToday.length} label="Done today" accent="text-green-400" />
-              <StatCard value={safePage} label="Page" />
-            </div>
-          )}
-
-          {/* Add task */}
-          <form onSubmit={addTask} className="relative mb-5">
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="What needs to happen?"
-              className="w-full rounded-2xl border border-white/10 bg-surface px-4 py-3.5 pr-28 text-[15px] text-ink placeholder-white/25 outline-none transition focus:border-accent/50 focus:ring-1 focus:ring-accent/20"
-            />
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              {title.trim() && (
-                <>
-                  <button
-                    type="button"
-                    title="AI Sharpen"
-                    onClick={sharpenTitle}
-                    disabled={sharpening}
-                    className={`rounded-lg px-2 py-1.5 text-[13px] font-medium transition ${
-                      sharpening ? "animate-pulse text-accent" : "text-white/30 hover:bg-accent/10 hover:text-accent"
-                    }`}
-                  >
-                    ✦
-                  </button>
-                  <button type="submit" className="rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent-dark">
-                    Add
-                  </button>
-                </>
+        {/* ── 2×2 matrices ── */}
+        {loading ? (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <Skeleton cls="h-[200px]" />
+            <Skeleton cls="h-[200px]" />
+          </div>
+        ) : stats && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {/* Eisenhower */}
+            <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-[12px] font-semibold text-white/50">Eisenhower matrix</span>
+                <span className="text-[10px] uppercase tracking-widest text-white/20">Urgent × Important</span>
+              </div>
+              <MatrixGrid cells={EIS_CELLS} data={stats.eisenhower} />
+              {(stats.eisenhower["none"] ?? 0) > 0 && (
+                <p className="mt-2 text-[10px] text-white/20">
+                  +{stats.eisenhower["none"]} not yet categorised
+                </p>
               )}
             </div>
-          </form>
 
-          {/* AI panels */}
-          <BriefingCard fetchBriefing={() => api.get<{ date: string; content: string }>("/api/v1/briefing")} />
-          <InsightsBanner fetchInsights={() => api.get<{ burnout_signal: boolean; message: string | null }>("/api/v1/insights")} />
-          <TriagePanel
-            staleTasks={staleTasks}
-            onTriage={async (id, action) => {
-              await api.post(`/api/v1/tasks/${id}/triage`, { action });
-              if (action !== "do_this_week") setTasks((prev) => prev.filter((t) => t.id !== id));
-            }}
-            onDone={() => { setStaleTasks([]); fetchAll(); }}
-          />
-
-          {/* Task list */}
-          {loading ? (
-            <div className="space-y-2.5">
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="h-[60px] animate-pulse rounded-2xl border border-white/5 bg-surface" />
-              ))}
+            {/* Impact × Effort */}
+            <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
+              <div className="mb-3 flex items-center justify-between">
+                <span className="text-[12px] font-semibold text-white/50">Impact × Effort</span>
+                <span className="text-[10px] uppercase tracking-widest text-white/20">Return on effort</span>
+              </div>
+              <MatrixGrid cells={IE_CELLS} data={stats.impact_effort} />
+              {(stats.impact_effort["none"] ?? 0) > 0 && (
+                <p className="mt-2 text-[10px] text-white/20">
+                  +{stats.impact_effort["none"]} not yet categorised
+                </p>
+              )}
             </div>
-          ) : activeTasks.length === 0 && completedToday.length === 0 ? (
-            <EmptyState onAdd={submitTask} onDump={() => setShowDump(true)} />
-          ) : (
-            <>
-              {pageTasks.length > 0 && (
-                <>
-                  <div className="mb-2 flex items-center justify-between">
-                    <span className="text-[11px] font-semibold uppercase tracking-widest text-white/25">Tasks</span>
-                    <span className="text-[11px] text-white/20">
-                      {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, sorted.length)} of {sorted.length}
-                      {isDragMode && " · drag to reorder"}
+          </div>
+        )}
+
+        {/* ── Top priority tasks ── */}
+        {!loading && stats && stats.top_tasks.length > 0 && (
+          <div className="rounded-2xl border border-white/[0.08] bg-surface p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-[12px] font-semibold text-white/50">Top priority</span>
+              <Link
+                href="/dashboard/tasks?mode=priority"
+                className="text-[11px] text-accent/70 hover:text-accent transition"
+              >
+                View all →
+              </Link>
+            </div>
+            <ol className="space-y-2">
+              {stats.top_tasks.map((t, i) => {
+                const eiCls = t.eisenhower_quadrant ? EIS_CLS[t.eisenhower_quadrant] : null;
+                const eiLabel = t.eisenhower_quadrant ? EIS_SHORT[t.eisenhower_quadrant] : null;
+                return (
+                  <li key={t.id} className="flex items-center gap-3">
+                    <span className="w-4 shrink-0 text-center text-[11px] font-bold tabular-nums text-white/20">
+                      {i + 1}
                     </span>
-                  </div>
+                    <span className="min-w-0 flex-1 truncate text-[13px] text-white/80">{t.title}</span>
+                    {eiCls && eiLabel && (
+                      <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium ${eiCls}`}>
+                        {eiLabel}
+                      </span>
+                    )}
+                    <span className="shrink-0 text-[11px] tabular-nums text-white/20">{t.priority_score}</span>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        )}
 
-                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                    <SortableContext items={pageTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
-                      <ul className="space-y-2">
-                        {pageTasks.map((task) => (
-                          <TaskRow key={task.id} task={task} isDragMode={isDragMode} onComplete={completeTask} onUpdateMatrix={updateMatrix} />
-                        ))}
-                      </ul>
-                    </SortableContext>
-                  </DndContext>
-
-                  {totalPages > 1 && (
-                    <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/[0.09] bg-surface px-4 py-2.5">
-                      <button
-                        type="button"
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        disabled={safePage === 1}
-                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/40 transition hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-25"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        Prev
-                      </button>
-                      <div className="flex items-center gap-1.5">
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-                          <button
-                            key={p}
-                            type="button"
-                            onClick={() => setCurrentPage(p)}
-                            className={`h-7 w-7 rounded-lg text-xs font-medium transition ${p === safePage ? "bg-accent text-white" : "text-white/30 hover:bg-white/5 hover:text-white/60"}`}
-                          >
-                            {p}
-                          </button>
-                        ))}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        disabled={safePage === totalPages}
-                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/40 transition hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-25"
-                      >
-                        Next
-                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                      </button>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Completed today */}
-              {completedToday.length > 0 && (
-                <div className="mt-4">
-                  <button
-                    type="button"
-                    onClick={() => setCompletedOpen((v) => !v)}
-                    className="flex w-full items-center justify-between rounded-2xl border border-white/[0.09] bg-surface px-4 py-3 transition hover:border-white/[0.15]"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="flex h-4 w-4 items-center justify-center rounded-full bg-green-950/60 border border-green-800/40">
-                        <svg width="8" height="8" viewBox="0 0 8 8" fill="none"><path d="M1.5 4l1.8 2L6.5 2" stroke="#4ade80" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/></svg>
-                      </div>
-                      <span className="text-sm text-white/35">Completed today</span>
-                      <span className="rounded-full border border-green-900/40 bg-green-950/30 px-2 py-0.5 text-xs text-green-400/70">{completedToday.length}</span>
-                    </div>
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className={`text-white/25 transition-transform duration-200 ${completedOpen ? "rotate-180" : ""}`}>
-                      <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </button>
-                  {completedOpen && (
-                    <div className="mt-2 animate-slide-down rounded-2xl border border-white/5 bg-surface px-4">
-                      <ul className="divide-y divide-white/5">
-                        {completedToday.map((task) => <CompletedRow key={task.id} task={task} />)}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-
-          <RetroPanel fetchRetro={() => api.get<{ week_start: string; content: string }>("/api/v1/insights/retrospective")} />
-        </main>
-      </div>
-    </>
+        {/* ── Bottom CTA ── */}
+        {!loading && (
+          <div className="grid grid-cols-2 gap-3">
+            <Link
+              href="/dashboard/tasks"
+              className="flex items-center justify-center gap-2 rounded-2xl border border-accent/25 bg-accent/8 py-3 text-sm font-semibold text-accent transition hover:bg-accent/15"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Task Board
+            </Link>
+            <Link
+              href="/dashboard/search"
+              className="flex items-center justify-center gap-2 rounded-2xl border border-white/[0.09] bg-surface py-3 text-sm font-medium text-white/45 transition hover:border-white/[0.15] hover:text-white/70"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.75" />
+                <path d="M20 20l-3-3" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+              </svg>
+              Search & Review
+            </Link>
+          </div>
+        )}
+      </main>
+    </div>
   );
 }

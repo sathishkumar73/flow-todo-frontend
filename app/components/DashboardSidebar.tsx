@@ -24,6 +24,17 @@ const NAV: NavItem[] = [
     ),
   },
   {
+    href: "/dashboard/today",
+    label: "Today's Dump",
+    icon: (
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+        <rect x="3" y="4" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="1.75" />
+        <path d="M16 2v4M8 2v4M3 10h18" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+        <path d="M8 14h4M8 17.5h6" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" />
+      </svg>
+    ),
+  },
+  {
     href: "/dashboard/tasks",
     label: "Tasks",
     icon: (

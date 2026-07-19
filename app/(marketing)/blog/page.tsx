@@ -5,7 +5,7 @@ import { getBlogPosts, getCategories } from '@/lib/blog'
 import BlogGrid from '@/components/blog/BlogGrid'
 import Pagination from '@/components/blog/Pagination'
 
-export const revalidate = 300
+export const revalidate = 60
 
 const BASE = 'https://flowtodo.app'
 
@@ -41,10 +41,15 @@ export default async function BlogPage({
   const { page = '1', category, search } = await searchParams
   const currentPage = Math.max(1, parseInt(page))
 
-  const [{ posts, totalPages, totalPosts }, categories] = await Promise.all([
-    getBlogPosts({ page: currentPage, category, search, limit: 9 }),
+  const [postsResult, categories] = await Promise.all([
+    getBlogPosts({ page: currentPage, category, search, limit: 9 }).catch(() => ({
+      posts: [] as import('@/lib/blog').BlogPost[],
+      totalPages: 0,
+      totalPosts: 0,
+    })),
     getCategories(),
   ])
+  const { posts, totalPages, totalPosts } = postsResult
 
   const allCategories = categories.length > 0
     ? [{ name: 'All', slug: 'all' }, ...categories]

@@ -39,32 +39,30 @@ export async function getBlogPosts({
   search?: string;
   limit?: number;
 }): Promise<BlogPostsResponse> {
-  try {
-    const params = new URLSearchParams();
-    params.set("page", page.toString());
-    params.set("limit", limit.toString());
-    if (category && category !== "all") params.set("category", category);
-    if (search) params.set("search", search);
+  const params = new URLSearchParams();
+  params.set("page", page.toString());
+  params.set("limit", limit.toString());
+  if (category && category !== "all") params.set("category", category);
+  if (search) params.set("search", search);
 
-    const res = await fetch(`${API_URL}/api/v1/blog/posts?${params}`, {
-      next: { revalidate: 300, tags: ["blog-posts"] },
-    });
-    if (!res.ok) return { posts: [], totalPages: 0, totalPosts: 0 };
-    const data = await res.json();
-    return {
-      posts: data.posts || [],
-      totalPages: data.total_pages || 0,
-      totalPosts: data.total_posts || 0,
-    };
-  } catch {
-    return { posts: [], totalPages: 0, totalPosts: 0 };
-  }
+  // cache: no-store so each ISR revalidation always hits the live API — prevents
+  // a backend blip from caching empty posts for 5 minutes
+  const res = await fetch(`${API_URL}/api/v1/blog/posts?${params}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Blog API error: ${res.status}`);
+  const data = await res.json();
+  return {
+    posts: data.posts || [],
+    totalPages: data.total_pages || 0,
+    totalPosts: data.total_posts || 0,
+  };
 }
 
 export async function getBlogPost(slug: string): Promise<BlogPost | null> {
   try {
     const res = await fetch(`${API_URL}/api/v1/blog/posts/${slug}`, {
-      next: { revalidate: 300, tags: ["blog-posts", `blog-post-${slug}`] },
+      cache: "no-store",
     });
     if (!res.ok) return null;
     return res.json();
@@ -76,7 +74,7 @@ export async function getBlogPost(slug: string): Promise<BlogPost | null> {
 export async function getCategories(): Promise<{ name: string; slug: string }[]> {
   try {
     const res = await fetch(`${API_URL}/api/v1/blog/categories`, {
-      next: { revalidate: 300, tags: ["blog-categories"] },
+      cache: "no-store",
     });
     if (!res.ok) return [];
     const data = await res.json();
@@ -89,7 +87,7 @@ export async function getCategories(): Promise<{ name: string; slug: string }[]>
 export async function getRelatedPosts(slug: string, limit = 3): Promise<BlogPost[]> {
   try {
     const res = await fetch(`${API_URL}/api/v1/blog/posts/${slug}/related?limit=${limit}`, {
-      next: { revalidate: 300, tags: ["blog-posts"] },
+      cache: "no-store",
     });
     if (!res.ok) return [];
     return res.json();

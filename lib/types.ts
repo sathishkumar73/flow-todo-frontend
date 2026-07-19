@@ -16,4 +16,5 @@ export interface Task {
   ai_scored: boolean;
   last_touched_at: string;
   effective_priority?: number;
+  focus_date?: string | null;
 }

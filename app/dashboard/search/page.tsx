@@ -299,7 +299,7 @@ export default function SearchPage() {
             </svg>
             <input
               autoFocus
-              type="search"
+              type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search tasks…"

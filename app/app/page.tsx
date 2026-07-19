@@ -21,7 +21,7 @@ import TriagePanel from "../components/TriagePanel";
 import InsightsBanner from "../components/InsightsBanner";
 import RetroPanel from "../components/RetroPanel";
 
-const FOCUS_LIMIT = 10;
+const PAGE_SIZE = 6;
 type SortMode = "stack" | "priority";
 
 function sortTasks(tasks: Task[], mode: SortMode): Task[] {
@@ -148,8 +148,8 @@ export default function Home() {
   const [completedToday, setCompletedToday] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState<SortMode>("stack");
+  const [currentPage, setCurrentPage] = useState(1);
   const [title, setTitle] = useState("");
-  const [backlogOpen, setBacklogOpen] = useState(false);
   const [completedOpen, setCompletedOpen] = useState(false);
   const [sharpening, setSharpening] = useState(false);
   const [staleTasks, setStaleTasks] = useState<Task[]>([]);
@@ -183,9 +183,16 @@ export default function Home() {
 
   const activeTasks = useMemo(() => tasks.filter((t) => t.status === "active"), [tasks]);
   const sorted = useMemo(() => sortTasks(activeTasks, mode), [activeTasks, mode]);
-  const focusTasks = sorted.slice(0, FOCUS_LIMIT);
-  const backlogTasks = sorted.slice(FOCUS_LIMIT);
+  const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
+  const safePage = Math.min(currentPage, totalPages);
+  const pageTasks = sorted.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
   const isDragMode = mode === "stack";
+
+  // Reset to page 1 when sort mode changes or total shrinks past current page
+  useEffect(() => { setCurrentPage(1); }, [mode]);
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [totalPages, currentPage]);
 
   async function submitTask(taskTitle: string) {
     const trimmed = taskTitle.trim();
@@ -317,10 +324,10 @@ export default function Home() {
         {/* ── Stats row ── */}
         {!loading && (
           <div className="mb-5 grid grid-cols-4 gap-2 sm:gap-3">
-            <StatCard value={focusTasks.length} label="Focus" accent="text-accent" />
-            <StatCard value={backlogTasks.length} label="Backlog" />
+            <StatCard value={activeTasks.length} label="Active" accent="text-accent" />
+            <StatCard value={totalPages} label="Pages" />
             <StatCard value={completedToday.length} label="Done today" accent="text-green-400" />
-            <StatCard value={activeTasks.length} label="Total active" />
+            <StatCard value={safePage} label="Page" />
           </div>
         )}
 
@@ -381,20 +388,23 @@ export default function Home() {
           <EmptyState onAdd={submitTask} />
         ) : (
           <>
-            {/* Focus */}
-            {focusTasks.length > 0 && (
+            {/* Task list — paginated */}
+            {pageTasks.length > 0 && (
               <>
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-[11px] font-semibold uppercase tracking-widest text-white/25">Focus</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-widest text-white/25">
+                    Tasks
+                  </span>
                   <span className="text-[11px] text-white/20">
-                    {focusTasks.length}/{FOCUS_LIMIT}
+                    {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, sorted.length)} of {sorted.length}
                     {isDragMode && " · drag to reorder"}
                   </span>
                 </div>
+
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                  <SortableContext items={focusTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+                  <SortableContext items={pageTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
                     <ul className="space-y-2">
-                      {focusTasks.map((task) => (
+                      {pageTasks.map((task) => (
                         <TaskRow
                           key={task.id}
                           task={task}
@@ -406,49 +416,53 @@ export default function Home() {
                     </ul>
                   </SortableContext>
                 </DndContext>
-              </>
-            )}
 
-            {/* Backlog */}
-            {backlogTasks.length > 0 && (
-              <div className="mt-4">
-                <button
-                  type="button"
-                  onClick={() => setBacklogOpen((v) => !v)}
-                  className="flex w-full items-center justify-between rounded-2xl border border-white/7 bg-surface px-4 py-3 transition hover:border-white/12"
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-white/35">Backlog</span>
-                    <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-white/35">
-                      {backlogTasks.length}
-                    </span>
-                    {!backlogOpen && (
-                      <span className="text-[11px] text-white/20">· tap ↑ to promote to focus</span>
-                    )}
+                {/* Pagination controls */}
+                {totalPages > 1 && (
+                  <div className="mt-4 flex items-center justify-between rounded-2xl border border-white/7 bg-surface px-4 py-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      disabled={safePage === 1}
+                      className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/40 transition hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-25"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M9 3L5 7l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      Prev
+                    </button>
+
+                    <div className="flex items-center gap-1.5">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setCurrentPage(p)}
+                          className={`h-7 w-7 rounded-lg text-xs font-medium transition ${
+                            p === safePage
+                              ? "bg-accent text-white"
+                              : "text-white/30 hover:bg-white/5 hover:text-white/60"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={safePage === totalPages}
+                      className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-white/40 transition hover:bg-white/5 hover:text-white/70 disabled:pointer-events-none disabled:opacity-25"
+                    >
+                      Next
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </button>
                   </div>
-                  <svg
-                    width="14" height="14" viewBox="0 0 14 14" fill="none"
-                    className={`text-white/25 transition-transform duration-200 ${backlogOpen ? "rotate-180" : ""}`}
-                  >
-                    <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
-                {backlogOpen && (
-                  <ul className="mt-2 animate-slide-down space-y-2 opacity-75">
-                    {backlogTasks.map((task) => (
-                      <TaskRow
-                        key={task.id}
-                        task={task}
-                        isDragMode={false}
-                        isBacklog
-                        onComplete={completeTask}
-                        onPromote={promoteToFocus}
-                        onUpdateMatrix={updateMatrix}
-                      />
-                    ))}
-                  </ul>
                 )}
-              </div>
+              </>
             )}
 
             {/* Completed today */}

@@ -2,8 +2,10 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Terms of Service — Flow Todo',
+  title: 'Terms of Service',
   description: 'Terms of service for Flow Todo.',
+  alternates: { canonical: 'https://flowtodo.app/terms' },
+  robots: { index: false, follow: true },
 }
 
 const ink = '#E8E8F0'

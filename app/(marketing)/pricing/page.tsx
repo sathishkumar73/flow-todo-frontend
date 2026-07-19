@@ -3,8 +3,21 @@ import PricingSection from "@/components/marketing/PricingSection";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Pricing — Flow Todo",
-  description: "Flow Todo is free forever. Pro features coming soon.",
+  title: "Pricing",
+  description: "Flow Todo is free forever. AI-powered task prioritization at no cost. Pro features coming soon.",
+  alternates: { canonical: "https://flowtodo.app/pricing" },
+  openGraph: {
+    title: "Pricing | Flow Todo",
+    description: "Flow Todo is free forever. AI-powered task prioritization at no cost.",
+    url: "https://flowtodo.app/pricing",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Flow Todo Pricing" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Pricing | Flow Todo",
+    description: "Flow Todo is free forever.",
+    images: ["/og-image.png"],
+  },
 };
 
 const T = {

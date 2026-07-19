@@ -6,6 +6,19 @@ export const metadata: Metadata = {
   title: "Flow Todo — Focus on your top 10 tasks",
   description:
     "Flow Todo forces you to prioritize ruthlessly. Score tasks using Eisenhower and Impact/Effort matrices. Only your top 10 ever show.",
+  alternates: { canonical: "https://flowtodo.app" },
+  openGraph: {
+    title: "Flow Todo — Focus on your top 10 tasks",
+    description: "AI scores every task. Only your top 10 show. Everything else waits.",
+    url: "https://flowtodo.app",
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Flow Todo" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Flow Todo — Focus on your top 10 tasks",
+    description: "AI scores every task. Only your top 10 show.",
+    images: ["/og-image.png"],
+  },
 };
 
 const T = {

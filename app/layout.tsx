@@ -1,6 +1,7 @@
 import { ClerkProvider } from "@clerk/nextjs";
 import { Analytics } from "@vercel/analytics/next";
 import type { Metadata, Viewport } from "next";
+import Script from "next/script";
 import "./globals.css";
 
 const BASE = "https://flowtodo.app";
@@ -138,6 +139,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <body className="min-h-screen antialiased">
           {children}
           <Analytics />
+          <Script
+            src="https://umami-production-3052.up.railway.app/script.js"
+            data-website-id="46a4e66a-847e-477d-8a20-50170ee5e117"
+            strategy="afterInteractive"
+          />
         </body>
       </html>
     </ClerkProvider>

@@ -43,12 +43,12 @@ export default function PrivacyPage() {
 
           <section>
             <h2 className="text-xl font-semibold mb-3" style={{ color: ink }}>5. Cookies</h2>
-            <p>We use cookies for authentication session management (required for the Service to function). You can manage cookie preferences in your browser settings.</p>
+            <p>We use cookies for authentication session management (required for the Service to function) and analytics (PostHog, to understand usage). You can disable analytics cookies in your browser settings.</p>
           </section>
 
           <section>
             <h2 className="text-xl font-semibold mb-3" style={{ color: ink }}>6. Third-Party Services</h2>
-            <p>We use the following third-party services: Clerk (authentication), Neon (database), Railway (backend hosting), and Vercel (frontend hosting). Each has their own privacy policy governing their data practices.</p>
+            <p>We use the following third-party services: Clerk (authentication), Neon (database), Railway (backend hosting), Vercel (frontend hosting), and PostHog (analytics). Each has their own privacy policy governing their data practices.</p>
           </section>
 
           <section>
